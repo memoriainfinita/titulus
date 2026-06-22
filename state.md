@@ -24,7 +24,8 @@
 
 ## History
 - 2026-06-22: extraído tar de z.ai. `.env` corregido (`DATABASE_URL` a `file:./db/custom.db`). Migrado de npm a pnpm. Script `dev` arreglado (quitado `| tee dev.log`). Builds aprobados vía `pnpm-workspace.yaml`. App arrancada OK (HTTP 200). Git iniciado limpio en `app/` (historial z.ai descartado por decisión del usuario). Commit inicial `7e0db66`.
-- 2026-06-22: arreglado scroll de paneles izq/der con `min-h-0` en `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`). Commit `eb2f4cf`. Añadidos al TODO los features/bugs pedidos por el usuario (timing por item, presets propios, modo oscuro, timeline, control de fade, retardo inicial de scroll, lentitud de exportación, botones de navegación visibles en el vídeo, auditoría de privacidad).
+- 2026-06-22: arreglado scroll de paneles izq/der con `min-h-0` en `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`). Commit `eb2f4cf`. Añadidos al TODO los features/bugs pedidos por el usuario (timing por item, presets propios, modo oscuro, timeline, control de fade, retardo inicial de scroll, lentitud de exportación, botones de navegación visibles en el vídeo, auditoría de privacidad). Log de sesión en `state.md` commit `2e6473f`.
+- 2026-06-22: eliminada dependencia muerta `z-ai-web-dev-sdk` (no se importaba); lockfile actualizado. Commit `195cf4b`. Creado `README.md` del proyecto. Commit `1a6abee`.
 
 ## TODO
 - [x] Paneles izquierdo y derecho sin barra de scroll: resuelto con `min-h-0` en las dos `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`).
