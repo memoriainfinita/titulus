@@ -23,7 +23,8 @@
 - [windows] Scripts npm con `| tee` fallan al lanzarse con pnpm en Windows (cmd.exe no tiene `tee`). Confirmed 2026-06.
 
 ## History
-- 2026-06-22: extraído tar de z.ai. `.env` corregido (`DATABASE_URL` a `file:./db/custom.db`). Migrado de npm a pnpm. Script `dev` arreglado (quitado `| tee dev.log`). Builds aprobados vía `pnpm-workspace.yaml`. App arrancada OK (HTTP 200). Git iniciado limpio en `app/` (historial z.ai descartado por decisión del usuario).
+- 2026-06-22: extraído tar de z.ai. `.env` corregido (`DATABASE_URL` a `file:./db/custom.db`). Migrado de npm a pnpm. Script `dev` arreglado (quitado `| tee dev.log`). Builds aprobados vía `pnpm-workspace.yaml`. App arrancada OK (HTTP 200). Git iniciado limpio en `app/` (historial z.ai descartado por decisión del usuario). Commit inicial `7e0db66`.
+- 2026-06-22: arreglado scroll de paneles izq/der con `min-h-0` en `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`). Commit `eb2f4cf`. Añadidos al TODO los features/bugs pedidos por el usuario (timing por item, presets propios, modo oscuro, timeline, control de fade, retardo inicial de scroll, lentitud de exportación, botones de navegación visibles en el vídeo, auditoría de privacidad).
 
 ## TODO
 - [x] Paneles izquierdo y derecho sin barra de scroll: resuelto con `min-h-0` en las dos `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`).
@@ -38,4 +39,6 @@
 - [ ] Línea de tiempo (timeline) para navegación mientras se editan los créditos. No existe.
 - [ ] Control de los tiempos de fade.
 - [ ] Bug: en modo scroll tarda mucho hasta que aparece el primer texto.
+- [ ] Exportación muy lenta (estimaba ~1 min, llega a >5 min). Enfoque actual en `useVideoExport.ts`: captura frame a frame con `html-to-image` (`toPng` por fotograma) + FFmpeg-wasm; lento por diseño. Referencia del usuario: en app previa "sequentia" era mucho más rápido. Investigar alternativa (hipótesis: `MediaRecorder` + `canvas.captureStream()` en tiempo real).
+- [ ] Bug: en el vídeo exportado se ven abajo los botones de navegación y se nota el cambio de texto. Ocultar/excluir los controles del preview durante la captura (revisar `CreditPreview.tsx`).
 - [ ] Privacidad / envío de datos a terceros. Revisión inicial 2026-06-22: sin analytics ni telemetría; `z-ai-web-dev-sdk` está en deps pero no se importa (dependencia muerta, eliminable). Únicas conexiones externas (GET, no envían contenido del usuario): `unpkg.com` (FFmpeg core, al exportar) y `fonts.googleapis.com`/`fonts.gstatic.com` (Google Fonts). Pendiente: auditoría más a fondo y decidir si self-hostear FFmpeg y fuentes para no contactar terceros.
