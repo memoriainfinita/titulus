@@ -1,0 +1,403 @@
+"use client"
+
+import * as React from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import {
+  Download,
+  Film,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Settings2,
+} from "lucide-react"
+import { useCreditStore } from "@/lib/credit/store"
+import { useVideoExport, ExportProgress } from "@/lib/credit/useVideoExport"
+import { toast } from "sonner"
+
+interface ExportDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  // Stage element ref to capture from (the hidden export stage)
+  stageRef: React.RefObject<HTMLDivElement>
+  // Function to set manual progress on the export-stage credits component
+  setManualProgress: (p: number) => void
+  // Measured duration in seconds
+  duration: number
+}
+
+function formatDuration(seconds: number): string {
+  if (!isFinite(seconds) || seconds <= 0) return "0s"
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+}
+
+function PhaseIcon({ phase }: { phase: ExportProgress["phase"] }) {
+  switch (phase) {
+    case "loading-ffmpeg":
+    case "capturing":
+    case "encoding":
+    case "finalizing":
+      return <Loader2 className="h-5 w-5 animate-spin text-primary" />
+    case "done":
+      return <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+    case "error":
+      return <XCircle className="h-5 w-5 text-destructive" />
+    default:
+      return <Film className="h-5 w-5 text-muted-foreground" />
+  }
+}
+
+export function ExportDialog({
+  open,
+  onOpenChange,
+  stageRef,
+  setManualProgress,
+  duration,
+}: ExportDialogProps) {
+  const { items, config, projectName } = useCreditStore()
+  const { isExporting, progress, exportVideo, cancelExport, reset } = useVideoExport()
+  const [fps, setFps] = React.useState(30)
+  const [quality, setQuality] = React.useState<"fast" | "balanced" | "high">("balanced")
+  const [format, setFormat] = React.useState<"mp4" | "webm">("mp4")
+  const [resultBlob, setResultBlob] = React.useState<Blob | null>(null)
+
+  // Reset on close
+  React.useEffect(() => {
+    if (!open) {
+      const timer = setTimeout(() => {
+        reset()
+        setResultBlob(null)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [open, reset])
+
+  const totalFrames = Math.max(1, Math.ceil(duration * fps))
+  const estimatedSizeMB = ((config.stageWidth * config.stageHeight * fps * duration * 0.05) / 1024 / 1024).toFixed(1)
+
+  const handleExport = async () => {
+    if (!stageRef.current) {
+      toast.error("No se encontró el escenario de exportación")
+      return
+    }
+    setResultBlob(null)
+    try {
+      const blob = await exportVideo(
+        stageRef.current,
+        items,
+        config,
+        config.mode,
+        {
+          fps,
+          width: config.stageWidth,
+          height: config.stageHeight,
+          format,
+          quality,
+          duration,
+        },
+        setManualProgress,
+      )
+      if (blob) {
+        setResultBlob(blob)
+        // Auto-trigger download
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        const safeName = projectName.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "creditos"
+        a.download = `${safeName}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.success(`Video exportado (${formatBytes(blob.size)})`)
+      }
+    } catch (err) {
+      console.error("[export-dialog] Export error:", err)
+      toast.error("Error en la exportación: " + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  const handleCancel = () => {
+    cancelExport()
+    toast.info("Exportación cancelada")
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-w-lg"
+        aria-describedby={undefined}
+        onPointerDownOutside={(e) => {
+          // Prevent closing while exporting
+          if (isExporting) e.preventDefault()
+        }}
+        onEscapeKeyDown={(e) => {
+          if (isExporting) e.preventDefault()
+        }}
+        onInteractOutside={(e) => {
+          if (isExporting) e.preventDefault()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Film className="h-5 w-5" />
+            Exportar video
+          </DialogTitle>
+          <DialogDescription>
+            Genera un archivo de video con tus créditos. El proceso captura frame a frame y los codifica con H.264.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Video info summary */}
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-muted/40 rounded-md p-2.5">
+              <div className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Duración
+              </div>
+              <div className="font-medium">{formatDuration(duration)}</div>
+            </div>
+            <div className="bg-muted/40 rounded-md p-2.5">
+              <div className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                <Settings2 className="h-3 w-3" /> Resolución
+              </div>
+              <div className="font-medium">
+                {config.stageWidth}×{config.stageHeight}
+              </div>
+            </div>
+            <div className="bg-muted/40 rounded-md p-2.5">
+              <div className="text-xs text-muted-foreground mb-0.5">Frames totales</div>
+              <div className="font-medium">{totalFrames.toLocaleString()}</div>
+            </div>
+            <div className="bg-muted/40 rounded-md p-2.5">
+              <div className="text-xs text-muted-foreground mb-0.5">Tamaño aprox.</div>
+              <div className="font-medium">~{estimatedSizeMB} MB</div>
+            </div>
+          </div>
+
+          {/* Settings */}
+          {!isExporting && progress.phase !== "done" && progress.phase !== "error" && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Formato</Label>
+                <RadioGroup
+                  value={format}
+                  onValueChange={(v) => setFormat(v as "mp4" | "webm")}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <RadioGroupItem value="mp4" id="fmt-mp4" />
+                    <div>
+                      <Label htmlFor="fmt-mp4" className="cursor-pointer font-medium text-sm">
+                        MP4 (H.264)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Compatible y universal</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <RadioGroupItem value="webm" id="fmt-webm" />
+                    <div>
+                      <Label htmlFor="fmt-webm" className="cursor-pointer font-medium text-sm">
+                        WebM (VP9)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Más rápido, menor compatibilidad</p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">FPS (frames por segundo)</Label>
+                <RadioGroup
+                  value={String(fps)}
+                  onValueChange={(v) => setFps(Number(v))}
+                  className="grid grid-cols-3 gap-2"
+                >
+                  {[24, 30, 60].map((f) => (
+                    <div key={f} className="flex items-center space-x-2 border rounded-md p-2 cursor-pointer hover:bg-accent/40">
+                      <RadioGroupItem value={String(f)} id={`fps-${f}`} />
+                      <Label htmlFor={`fps-${f}`} className="cursor-pointer text-sm font-medium">
+                        {f} fps
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Calidad</Label>
+                <RadioGroup
+                  value={quality}
+                  onValueChange={(v) => setQuality(v as "fast" | "balanced" | "high")}
+                  className="grid grid-cols-3 gap-2"
+                >
+                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="fast" id="q-fast" />
+                      <Label htmlFor="q-fast" className="cursor-pointer text-sm font-medium">
+                        Rápida
+                      </Label>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-6">Archivo más grande</span>
+                  </div>
+                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="balanced" id="q-balanced" />
+                      <Label htmlFor="q-balanced" className="cursor-pointer text-sm font-medium">
+                        Balanceada
+                      </Label>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-6">Recomendada</span>
+                  </div>
+                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="high" id="q-high" />
+                      <Label htmlFor="q-high" className="cursor-pointer text-sm font-medium">
+                        Alta
+                      </Label>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-6">Más lento, mejor calidad</span>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-3 dark:bg-amber-950/30 dark:border-amber-900">
+                <div className="flex gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                    <p className="font-medium">Información sobre la exportación</p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-1">
+                      <li>La primera exportación descarga el motor ffmpeg (~30 MB).</li>
+                      <li>Se captura frame a frame, así que tardará proporcionalmente a la duración.</li>
+                      <li>El navegador debe permanecer abierto y en primer plano durante el proceso.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={handleExport} className="w-full" size="lg">
+                <Download className="h-4 w-4 mr-2" />
+                Iniciar exportación
+              </Button>
+            </>
+          )}
+
+          {/* Progress */}
+          {(isExporting || progress.phase === "done" || progress.phase === "error") && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3">
+                <PhaseIcon phase={progress.phase} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{progress.message}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Fase: {
+                      progress.phase === "loading-ffmpeg" ? "Cargando motor" :
+                      progress.phase === "capturing" ? "Capturando frames" :
+                      progress.phase === "encoding" ? "Codificando" :
+                      progress.phase === "finalizing" ? "Finalizando" :
+                      progress.phase === "done" ? "Completado" :
+                      "Error"
+                    }
+                    {progress.phase === "capturing" && progress.totalFrames > 0 && (
+                      <> · {progress.currentFrame}/{progress.totalFrames}</>
+                    )}
+                  </p>
+                </div>
+                {progress.phase === "done" && resultBlob && (
+                  <Badge variant="secondary" className="shrink-0">
+                    {formatBytes(resultBlob.size)}
+                  </Badge>
+                )}
+              </div>
+
+              <Progress value={progress.overallProgress * 100} className="h-2" />
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{(progress.overallProgress * 100).toFixed(0)}%</span>
+                {progress.phase === "capturing" && progress.totalFrames > 0 && (
+                  <span>
+                    {((progress.currentFrame / Math.max(1, progress.totalFrames)) * 100).toFixed(0)}% capturado
+                  </span>
+                )}
+              </div>
+
+              {progress.phase === "error" && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3">
+                  <p className="text-sm text-destructive">{progress.message}</p>
+                </div>
+              )}
+
+              {progress.phase === "done" && (
+                <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3 dark:bg-emerald-950/30 dark:border-emerald-900">
+                  <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                    Video exportado correctamente. Se ha descargado automáticamente.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {isExporting && (
+                  <Button variant="destructive" onClick={handleCancel} className="flex-1">
+                    Cancelar
+                  </Button>
+                )}
+                {(progress.phase === "done" || progress.phase === "error") && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      reset()
+                      setResultBlob(null)
+                    }}
+                    className="flex-1"
+                  >
+                    Exportar de nuevo
+                  </Button>
+                )}
+                {progress.phase === "done" && resultBlob && (
+                  <Button
+                    onClick={() => {
+                      const url = URL.createObjectURL(resultBlob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      const safeName = projectName.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "creditos"
+                      a.download = `${safeName}.${format}`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar de nuevo
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
