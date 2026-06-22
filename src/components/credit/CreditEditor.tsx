@@ -352,7 +352,7 @@ export function CreditEditor() {
         </DropdownMenu>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-1.5">
           {items.length === 0 && (
             <div className="text-center py-12 text-sm text-muted-foreground">

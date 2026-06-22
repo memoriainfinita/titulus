@@ -153,7 +153,7 @@ export function ConfigPanel() {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div>
           {/* MODE */}
           <Section title="Modo de crédito" icon={Sparkles}>
