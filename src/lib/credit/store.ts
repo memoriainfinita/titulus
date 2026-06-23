@@ -25,6 +25,7 @@ interface CreditState {
   isPlaying: boolean
   isFullscreen: boolean
   previewKey: number // bump to force preview remount
+  _hasHydrated: boolean // true once persist has rehydrated from localStorage
 
   // Actions
   addItem: (type: CreditItemType, text?: string, index?: number) => void
@@ -48,6 +49,7 @@ interface CreditState {
   setFullscreen: (fs: boolean) => void
   restartPreview: () => void
   setProjectName: (name: string) => void
+  setHasHydrated: (v: boolean) => void
 
   // Export / Import
   exportProject: () => string
@@ -149,6 +151,7 @@ export const useCreditStore = create<CreditState>()(
       isPlaying: false,
       isFullscreen: false,
       previewKey: 0,
+      _hasHydrated: false,
 
       addItem: (type, text = "", index) => {
         const newItem: CreditItem = {
@@ -249,6 +252,7 @@ export const useCreditStore = create<CreditState>()(
       setFullscreen: (isFullscreen) => set({ isFullscreen }),
       restartPreview: () => set((state) => ({ previewKey: state.previewKey + 1, isPlaying: true })),
       setProjectName: (projectName) => set({ projectName }),
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
 
       exportProject: () => {
         const { items, config, fonts, projectName } = get()
@@ -288,6 +292,9 @@ export const useCreditStore = create<CreditState>()(
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<CreditState>
         return { ...current, ...p, config: mergePersistedConfig(p.config) }
+      },
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
       },
     },
   ),
