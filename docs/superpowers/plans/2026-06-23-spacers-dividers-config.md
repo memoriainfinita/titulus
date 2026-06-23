@@ -213,10 +213,42 @@ git commit -m "feat: add spacer/divider config fields and pure resolvers"
 - Test: `src/lib/credit/store.test.ts`
 
 **Interfaces:**
-- Consumes: `DEFAULT_CONFIG`, `CreditState` (de `store.ts`).
-- Produces: comportamiento de `importProject` y de rehidratación que rellena campos de config ausentes desde `DEFAULT_CONFIG`. No exporta símbolos nuevos.
+- Consumes: `DEFAULT_CONFIG`, `CreditConfig`, `CreditState` (de `store.ts`/`types.ts`).
+- Produces: `mergePersistedConfig(persistedConfig: Partial<CreditConfig> | undefined): CreditConfig` — rellena claves de config ausentes desde `DEFAULT_CONFIG`. Usada por el `merge` del `persist`.
 
-- [ ] **Step 1: Escribir el test que falla** — añadir al final del bloque `describe("project import/export", ...)` en `src/lib/credit/store.test.ts`, antes de su `})` de cierre (línea 167):
+El cambio real es el `merge` del `persist` (rehidratación desde localStorage), que happy-dom no ejercita. Para tener un test que falle→pase de verdad, la lógica de merge se extrae a `mergePersistedConfig` y se testea directamente. Los tests de `importProject` se añaden como cobertura de integración adicional (preservación de overrides y backfill ya funcionan vía spread/merge existente).
+
+- [ ] **Step 1: Escribir el test que falla** — añadir a `src/lib/credit/store.test.ts`. Primero, en el import de la línea 2-7 añadir `mergePersistedConfig`:
+
+```ts
+import {
+  useCreditStore,
+  getFontSize,
+  getFontWeight,
+  resolveAlignment,
+  mergePersistedConfig,
+} from "./store"
+```
+
+Luego añadir un nuevo bloque `describe` al final del archivo:
+
+```ts
+describe("mergePersistedConfig", () => {
+  it("backfills missing keys from DEFAULT_CONFIG", () => {
+    const merged = mergePersistedConfig({ scrollSpeed: 99 } as Partial<typeof DEFAULT_CONFIG>)
+    expect(merged.scrollSpeed).toBe(99)
+    expect(merged.spacerHeight).toBe(DEFAULT_CONFIG.spacerHeight)
+    expect(merged.dividerStyle).toBe(DEFAULT_CONFIG.dividerStyle)
+    expect(merged.dividerColor).toBe(DEFAULT_CONFIG.dividerColor)
+  })
+
+  it("returns full defaults when given undefined", () => {
+    expect(mergePersistedConfig(undefined)).toEqual(DEFAULT_CONFIG)
+  })
+})
+```
+
+Y, como cobertura de integración, añadir dentro del bloque `describe("project import/export", ...)` antes de su `})` de cierre (línea 167):
 
 ```ts
   it("preserves new spacer/divider item overrides through export then import", () => {
@@ -235,45 +267,40 @@ git commit -m "feat: add spacer/divider config fields and pure resolvers"
     expect(items[1].dividerStyle).toBe("dashed")
     expect(items[1].dividerColor).toBe("#ff0000")
   })
-
-  it("backfills new spacer/divider config keys from defaults on import", () => {
-    const json = JSON.stringify({
-      items: [{ id: "z", type: "title", text: "Z" }],
-      config: { scrollSpeed: 99 }, // an old project without the new fields
-    })
-    expect(useCreditStore.getState().importProject(json)).toBe(true)
-    const { config } = useCreditStore.getState()
-    expect(config.spacerHeight).toBe(DEFAULT_CONFIG.spacerHeight)
-    expect(config.dividerStyle).toBe(DEFAULT_CONFIG.dividerStyle)
-    expect(config.dividerColor).toBe(DEFAULT_CONFIG.dividerColor)
-  })
 ```
 
 - [ ] **Step 2: Ejecutar y verificar que falla**
 
 Run: `pnpm exec vitest run src/lib/credit/store.test.ts`
-Expected: FAIL — el roundtrip de overrides ya pasa por spread, pero el backfill de las nuevas claves de config solo funciona si `importProject` mergea con `DEFAULT_CONFIG` (ya lo hace) — este test debería PASAR para import. El test de override también PASA. (Este paso documenta que `importProject` ya cubre el caso; el `merge` de persist es lo que falta y no es testeable unit con happy-dom.)
+Expected: FAIL — `mergePersistedConfig` no existe / no exportada.
 
-Nota: si ambos tests pasan ya, continuar igualmente con el Step 3 — el cambio en `persist` cubre la rehidratación desde localStorage, que estos tests no ejercitan.
+- [ ] **Step 3: Implementar `mergePersistedConfig` y usarla en el `merge` del `persist`** en `src/lib/credit/store.ts`.
 
-- [ ] **Step 3: Añadir `merge` al `persist`** en `src/lib/credit/store.ts`. En el objeto de opciones (donde están `name` y `partialize`, líneas ~280-288), añadir tras `partialize`:
+Añadir la función exportada al final del archivo (junto a `getFontSize`/`resolveAlignment`):
+
+```ts
+// Merge a persisted (possibly older) config over the current defaults, so
+// config keys added after a user's state was first saved are backfilled.
+export function mergePersistedConfig(
+  persistedConfig: Partial<CreditConfig> | undefined,
+): CreditConfig {
+  return { ...DEFAULT_CONFIG, ...(persistedConfig ?? {}) }
+}
+```
+
+En el objeto de opciones del `persist` (donde están `name` y `partialize`, líneas ~280-288), añadir tras `partialize`:
 
 ```ts
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<CreditState>
-        return {
-          ...current,
-          ...p,
-          // Backfill config keys added after a user's state was first persisted.
-          config: { ...DEFAULT_CONFIG, ...(p.config ?? {}) },
-        }
+        return { ...current, ...p, config: mergePersistedConfig(p.config) }
       },
 ```
 
 - [ ] **Step 4: Ejecutar y verificar que pasa**
 
 Run: `pnpm exec vitest run src/lib/credit/store.test.ts`
-Expected: PASS (todos, incluidos los dos nuevos).
+Expected: PASS (todos, incluidos los 3 nuevos).
 
 - [ ] **Step 5: Verificar tipos**
 
@@ -669,7 +696,7 @@ En la sección "Diseño" aparecen los nuevos sliders y selects. Cambiar el alto 
 - [ ] **Step 5: Ejecutar toda la suite**
 
 Run: `pnpm test:run`
-Expected: PASS — los 42 previos + 9 de separators + 2 nuevos de store = 53.
+Expected: PASS — los 42 previos + 9 de separators + 3 nuevos de store (2 de `mergePersistedConfig` + 1 roundtrip de overrides) = 54.
 
 - [ ] **Step 6: Commit**
 
