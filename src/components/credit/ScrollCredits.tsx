@@ -9,6 +9,7 @@ import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
+import { resolveImageWidth } from "@/lib/credit/image"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -55,6 +56,29 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
 function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }) {
   if (item.type === "spacer") {
     return <div style={{ height: `${resolveSpacerHeight(item, config)}px` }} aria-hidden />
+  }
+  if (item.type === "image") {
+    if (!item.imageSrc) return null
+    const align = resolveAlignment(item, config)
+    return (
+      <div
+        style={{
+          padding: `0 ${config.paddingX}px`,
+          width: "100%",
+          boxSizing: "border-box",
+          display: "flex",
+          justifyContent: align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center",
+          margin: `${config.itemSpacing}px 0`,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.imageSrc}
+          alt=""
+          style={{ width: `${resolveImageWidth(item, config)}%`, height: "auto", maxWidth: "100%" }}
+        />
+      </div>
+    )
   }
   if (item.type === "divider") {
     const align = resolveAlignment(item, config)

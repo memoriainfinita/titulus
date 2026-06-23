@@ -8,6 +8,7 @@ import { getAppearItemDuration } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
+import { resolveImageWidth } from "@/lib/credit/image"
 
 interface AppearingCreditsProps {
   items: CreditItem[]
@@ -333,7 +334,18 @@ export function AppearingCredits({
           transition={variants.transition}
           className="w-full flex flex-col items-center justify-center px-4"
         >
-          {config.animationType === "typewriter" ? (
+          {currentItem.type === "image" ? (
+            currentItem.imageSrc ? (
+              <div className="w-full flex justify-center" style={{ padding: `0 ${config.paddingX}px` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentItem.imageSrc}
+                  alt=""
+                  style={{ width: `${resolveImageWidth(currentItem, config)}%`, height: "auto", maxWidth: "100%" }}
+                />
+              </div>
+            ) : null
+          ) : config.animationType === "typewriter" ? (
             <div
               style={{
                 fontFamily: resolveTextStyle(currentItem, config).fontFamily,
