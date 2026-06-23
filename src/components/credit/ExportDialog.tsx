@@ -105,6 +105,7 @@ export function ExportDialog({
   const [elapsedMs, setElapsedMs] = React.useState(0)
   const [savedToFile, setSavedToFile] = React.useState(false)
   const startTimeRef = React.useRef<number | null>(null)
+  const phaseStartRef = React.useRef<number | null>(null)
   const fileHandleRef = React.useRef<FileSystemFileHandle | null>(null)
 
   // Reset on close
@@ -116,6 +117,7 @@ export function ExportDialog({
         setElapsedMs(0)
         setSavedToFile(false)
         startTimeRef.current = null
+        phaseStartRef.current = null
         fileHandleRef.current = null
       }, 300)
       return () => clearTimeout(timer)
@@ -133,13 +135,28 @@ export function ExportDialog({
     return () => clearInterval(id)
   }, [isExporting])
 
+  // Mark when each phase begins, so the ETA extrapolates within the current
+  // phase (capturing and encoding run at very different rates, and the first
+  // export spends a chunk of time downloading ffmpeg).
+  React.useEffect(() => {
+    phaseStartRef.current = performance.now()
+  }, [progress.phase])
+
   const totalFrames = Math.max(1, Math.ceil(duration * fps))
   const evenDim = (n: number) => Math.round(n / 2) * 2
   const outWidth = evenDim(config.stageWidth * scale)
   const outHeight = evenDim(config.stageHeight * scale)
   const SCALE_PRESETS = [1, 1.5, 2, 3]
-  const showEta = progress.phase === "capturing" || progress.phase === "encoding"
-  const etaSeconds = showEta ? estimateRemainingSeconds(elapsedMs, progress.overallProgress) : null
+
+  // Per-phase ETA: capturing is linear in frames; encoding maps to the 0.6-0.95
+  // slice of the overall bar reported by ffmpeg.
+  const phaseElapsedMs = phaseStartRef.current != null ? performance.now() - phaseStartRef.current : 0
+  let etaSeconds: number | null = null
+  if (progress.phase === "capturing" && progress.totalFrames > 0) {
+    etaSeconds = estimateRemainingSeconds(phaseElapsedMs, progress.currentFrame / progress.totalFrames)
+  } else if (progress.phase === "encoding") {
+    etaSeconds = estimateRemainingSeconds(phaseElapsedMs, (progress.overallProgress - 0.6) / 0.35)
+  }
 
   const handleExport = async () => {
     if (!stageRef.current) {
@@ -430,7 +447,18 @@ export function ExportDialog({
                 )}
               </div>
 
-              <Progress value={progress.overallProgress * 100} className="h-2" />
+              <Progress
+                value={progress.overallProgress * 100}
+                className={`h-2 ${
+                  progress.phase === "error"
+                    ? "[&_[data-slot=progress-indicator]]:bg-destructive"
+                    : progress.phase === "done"
+                    ? "[&_[data-slot=progress-indicator]]:bg-emerald-500"
+                    : progress.phase === "encoding" || progress.phase === "finalizing"
+                    ? "[&_[data-slot=progress-indicator]]:bg-amber-500"
+                    : ""
+                }`}
+              />
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{(progress.overallProgress * 100).toFixed(0)}%</span>
