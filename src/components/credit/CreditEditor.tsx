@@ -25,7 +25,8 @@ import {
 } from "lucide-react"
 import { useCreditStore, getFontSize } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
-import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle, DEFAULT_ITEMS } from "@/lib/credit/types"
+import { CreditItem, CreditConfig, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle, AnimationType, DEFAULT_ITEMS } from "@/lib/credit/types"
+import { resolveAnimationType } from "@/lib/credit/appearing"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -84,6 +85,131 @@ const ADD_MENU_TYPES: CreditItemType[] = [
   "divider",
   "image",
 ]
+
+const ANIMATIONS: { value: AnimationType; label: string }[] = [
+  { value: "fade", label: "Fade" },
+  { value: "slide-up", label: "Deslizar arriba" },
+  { value: "slide-down", label: "Deslizar abajo" },
+  { value: "slide-left", label: "Deslizar izquierda" },
+  { value: "slide-right", label: "Deslizar derecha" },
+  { value: "zoom", label: "Zoom" },
+  { value: "blur", label: "Desenfoque" },
+  { value: "typewriter", label: "Máquina de escribir" },
+]
+
+// Per-item animation overrides (appearing mode). Shown for text and image items.
+function AnimationOverrides({
+  item,
+  config,
+  updateItem,
+}: {
+  item: CreditItem
+  config: CreditConfig
+  updateItem: (id: string, patch: Partial<CreditItem>) => void
+}) {
+  const effectiveType = resolveAnimationType(item, config)
+  const numHandler =
+    (key: keyof CreditItem, min?: number) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value
+      if (raw === "") {
+        updateItem(item.id, { [key]: undefined } as Partial<CreditItem>)
+        return
+      }
+      const n = Number(raw)
+      if (Number.isNaN(n)) return
+      const v = min != null ? Math.max(min, n) : n
+      updateItem(item.id, { [key]: v } as Partial<CreditItem>)
+    }
+  return (
+    <div className="border-t pt-2 space-y-2">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Animación (este item)</div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Tipo</span>
+        <Select
+          value={item.animationType ?? "__global"}
+          onValueChange={(v) =>
+            updateItem(item.id, { animationType: v === "__global" ? undefined : (v as AnimationType) })
+          }
+        >
+          <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__global">(global)</SelectItem>
+            {ANIMATIONS.map((a) => (
+              <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {effectiveType !== "typewriter" && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Duración (s)</span>
+          <Input
+            type="number" min={0.1} step={0.1}
+            value={item.animationDuration ?? ""}
+            placeholder={String(config.animationDuration)}
+            onChange={numHandler("animationDuration", 0.1)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 w-24 text-sm"
+          />
+          <span className="text-[10px] text-muted-foreground">vacío = global</span>
+        </div>
+      )}
+      {effectiveType.startsWith("slide") && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Distancia</span>
+          <Input
+            type="number" step={1}
+            value={item.animSlideDistance ?? ""}
+            placeholder={String(config.animSlideDistance)}
+            onChange={numHandler("animSlideDistance")}
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 w-24 text-sm"
+          />
+        </div>
+      )}
+      {effectiveType === "blur" && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Desenfoque</span>
+          <Input
+            type="number" min={0} step={1}
+            value={item.animBlurAmount ?? ""}
+            placeholder={String(config.animBlurAmount)}
+            onChange={numHandler("animBlurAmount", 0)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 w-24 text-sm"
+          />
+        </div>
+      )}
+      {effectiveType === "zoom" && (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Zoom desde</span>
+            <Input
+              type="number" min={0} step={0.1}
+              value={item.animZoomFrom ?? ""}
+              placeholder={String(config.animZoomFrom)}
+              onChange={numHandler("animZoomFrom", 0)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Zoom hasta</span>
+            <Input
+              type="number" min={0} step={0.1}
+              value={item.animZoomTo ?? ""}
+              placeholder={String(config.animZoomTo)}
+              onChange={numHandler("animZoomTo", 0)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function ItemRow({ item, index, isSelected, onSelect }: {
   item: CreditItem
@@ -446,7 +572,27 @@ function ItemRow({ item, index, isSelected, onSelect }: {
                 className="h-7 w-24 text-sm"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Peso</span>
+              <Input
+                type="number" min={100} max={900} step={100}
+                value={item.fontWeight ?? ""}
+                placeholder="global"
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { fontWeight: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { fontWeight: Math.max(1, n) })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
+              <span className="text-[10px] text-muted-foreground">vacío = global</span>
+            </div>
           </div>
+          {config.mode === "appearing" && (
+            <AnimationOverrides item={item} config={config} updateItem={updateItem} />
+          )}
         </div>
       )}
 
@@ -623,6 +769,9 @@ function ItemRow({ item, index, isSelected, onSelect }: {
             />
             <span className="text-[10px] text-muted-foreground">vacío = global</span>
           </div>
+          {config.mode === "appearing" && (
+            <AnimationOverrides item={item} config={config} updateItem={updateItem} />
+          )}
         </div>
       )}
     </div>
@@ -631,39 +780,9 @@ function ItemRow({ item, index, isSelected, onSelect }: {
 
 export function CreditEditor() {
   const { items, selectedItemId, selectItem, addItem, clearItems, loadItems } = useCreditStore()
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [exampleOpen, setExampleOpen] = React.useState(false)
 
   const loadExample = () => loadItems(DEFAULT_ITEMS.map((i) => ({ ...i })))
-
-  const handleExport = () => {
-    const data = JSON.stringify({ items }, null, 2)
-    const blob = new Blob([data], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "creditos-items.json"
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result as string)
-        if (Array.isArray(parsed.items)) {
-          loadItems(parsed.items)
-        }
-      } catch {
-        // ignore
-      }
-    }
-    reader.readAsText(file)
-    e.target.value = ""
-  }
 
   return (
     <div className="flex flex-col h-full">
@@ -673,13 +792,6 @@ export function CreditEditor() {
           <Badge variant="secondary" className="text-xs">{items.length}</Badge>
         </div>
         <div className="flex items-center gap-1">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            className="hidden"
-          />
           <Button
             size="sm"
             variant="ghost"
@@ -705,22 +817,6 @@ export function CreditEditor() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Importar
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs"
-            onClick={handleExport}
-          >
-            Exportar
-          </Button>
         </div>
       </div>
 

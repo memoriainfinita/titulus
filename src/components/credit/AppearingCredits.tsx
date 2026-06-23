@@ -3,8 +3,14 @@
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
-import { getFontWeight, resolveAlignment } from "@/lib/credit/store"
-import { getAppearItemDuration } from "@/lib/credit/appearing"
+import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
+import {
+  getAppearItemDuration,
+  resolveAnimationType,
+  resolveAnimationDuration,
+  resolveAnimationTunables,
+  AnimationTunables,
+} from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
@@ -25,13 +31,6 @@ interface AppearingCreditsProps {
 // Filter out spacer and divider items — they don't appear in this mode
 function getVisibleItems(items: CreditItem[]): CreditItem[] {
   return items.filter((i) => i.type !== "spacer" && i.type !== "divider")
-}
-
-export interface AnimationTunables {
-  slide: number // px traveled by slide-* variants
-  blur: number // px blur for the blur variant
-  zoomFrom: number // initial scale for zoom
-  zoomTo: number // exit scale for zoom
 }
 
 // Get animation variants for the chosen type
@@ -101,20 +100,10 @@ export function getVariants(
   }
 }
 
-// Pull the animation tunables out of config
-function tunablesFromConfig(config: CreditConfig): AnimationTunables {
-  return {
-    slide: config.animSlideDistance,
-    blur: config.animBlurAmount,
-    zoomFrom: config.animZoomFrom,
-    zoomTo: config.animZoomTo,
-  }
-}
-
 function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }) {
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
-  const fontWeight = item.bold ? 700 : getFontWeight(item.type, config.fontWeight)
+  const fontWeight = resolveFontWeight(item, config)
   const shadow = resolveTextShadow(config)
   const blur = resolveTextBlur(item, config)
   return (
@@ -187,16 +176,16 @@ export function AppearingCredits({
     }
     if (foundIdx !== currentIndex) setCurrentIndex(foundIdx)
     // For typewriter, compute typed text
-    if (config.animationType === "typewriter") {
-      const item = visibleItems[foundIdx]
-      const text = item.text || ""
+    const foundItem = visibleItems[foundIdx]
+    if (foundItem && resolveAnimationType(foundItem, config) === "typewriter") {
+      const text = foundItem.text || ""
       const typingDuration = Math.max(2, text.length * (config.typewriterSpeed / 1000))
       const charsToShow = Math.min(text.length, Math.floor((timeIntoItem / typingDuration) * text.length))
       setTypedText(text.slice(0, charsToShow))
     } else {
       setTypedText("")
     }
-  }, [manualProgress, visibleItems, itemDurations, totalDuration, config.animationType, config.typewriterSpeed, currentIndex])
+  }, [manualProgress, visibleItems, itemDurations, totalDuration, config, config.animationType, config.typewriterSpeed, currentIndex])
 
   // Reset on restart
   React.useEffect(() => {
@@ -238,9 +227,9 @@ export function AppearingCredits({
   React.useEffect(() => {
     if (manualProgress !== null) return
     if (!isPlaying) return
-    if (config.animationType !== "typewriter") return
     if (currentIndex >= visibleItems.length) return
     const item = visibleItems[currentIndex]
+    if (resolveAnimationType(item, config) !== "typewriter") return
     const text = item.text || ""
     setTypedText("")
     let i = 0
@@ -293,7 +282,12 @@ export function AppearingCredits({
   }
 
   const currentItem = visibleItems[Math.min(currentIndex, visibleItems.length - 1)]
-  const variants = getVariants(config.animationType, config.animationDuration, tunablesFromConfig(config))
+  const currentAnimType = resolveAnimationType(currentItem, config)
+  const variants = getVariants(
+    currentAnimType,
+    resolveAnimationDuration(currentItem, config),
+    resolveAnimationTunables(currentItem, config),
+  )
 
   return (
     <div
@@ -345,14 +339,12 @@ export function AppearingCredits({
                 />
               </div>
             ) : null
-          ) : config.animationType === "typewriter" ? (
+          ) : currentAnimType === "typewriter" ? (
             <div
               style={{
                 fontFamily: resolveTextStyle(currentItem, config).fontFamily,
                 fontSize: `${resolveTextStyle(currentItem, config).fontSize}px`,
-                fontWeight: currentItem.bold
-                  ? 700
-                  : getFontWeight(currentItem.type, config.fontWeight),
+                fontWeight: resolveFontWeight(currentItem, config),
                 color: resolveTextStyle(currentItem, config).color,
                 letterSpacing: `${resolveTextStyle(currentItem, config).letterSpacing}px`,
                 lineHeight: resolveTextStyle(currentItem, config).lineHeight,

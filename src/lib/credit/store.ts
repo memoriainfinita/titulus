@@ -341,6 +341,13 @@ export function resolveAlignment(item: CreditItem, config: CreditConfig): Alignm
   return item.align ?? config.alignment
 }
 
+// Resolve the numeric font weight for an item. An explicit per-item weight wins;
+// otherwise `bold` forces 700, falling back to the type-derived global weight.
+export function resolveFontWeight(item: CreditItem, config: CreditConfig): number {
+  if (typeof item.fontWeight === "number" && item.fontWeight > 0) return item.fontWeight
+  return item.bold ? 700 : getFontWeight(item.type, config.fontWeight)
+}
+
 // Merge a persisted (possibly older) config over the current defaults, so
 // config keys added after a user's state was first saved are backfilled.
 export function mergePersistedConfig(
