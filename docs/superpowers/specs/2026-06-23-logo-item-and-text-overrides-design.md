@@ -34,7 +34,7 @@ Estado: aprobado por el usuario
 
 - `CreditItemType`: añadir `"image"`.
 - `CREDIT_TYPE_LABELS.image = "Logo / Imagen"`.
-- `CREDIT_TYPE_ICONS.image = "Image"`.
+- `CREDIT_TYPE_ICONS.image = "Image"` — este record (`types.ts`) es código muerto (nunca se importa); se actualiza solo por exhaustividad del `Record<CreditItemType, string>`. El icono real lo da `TYPE_ICONS` (ver UI).
 - `CreditItem`:
   - `imageSrc?: string` — data URL de la imagen.
   - `imageWidth?: number` — ancho override en % del ancho del escenario. undefined = hereda `config.imageWidth`.
@@ -51,19 +51,29 @@ Unidad de ancho: % del ancho del escenario (consistente con `dividerWidth`; esca
 
 ### Render
 
-- `ScrollCredits.tsx` `CreditLine`: rama nueva `if (item.type === "image")`. Si no hay `imageSrc`, no renderizar nada (o placeholder vacío). Si lo hay: contenedor con `padding 0 paddingX`, `display flex`, `justifyContent` según `resolveAlignment`, `margin: itemSpacing 0`; dentro `<img src={imageSrc}>` con `width: ${resolveImageWidth}%`, `height: auto`, `maxWidth: 100%`.
+- `ScrollCredits.tsx` `CreditLine`: rama nueva `if (item.type === "image")`. Si no hay `imageSrc`, no renderizar nada (`return null`). Si lo hay: contenedor con `padding 0 paddingX`, `display flex`, `justifyContent` según `resolveAlignment`, `margin: itemSpacing 0`; dentro `<img src={imageSrc}>` con `width: ${resolveImageWidth}%`, `height: auto`, `maxWidth: 100%`.
 - `AppearingCredits.tsx`:
   - `getVisibleItems`: dejar de filtrar `image` (sigue filtrando `spacer`/`divider`).
-  - `AppearItem`: rama nueva para `type === "image"` que renderiza el `<img>` (mismo dimensionamiento), envuelto en el `motion.div` que ya aplica la animación.
+  - Cortocircuito de typewriter (HUECO 4): en el render del item actual (línea ~309), la condición `config.animationType === "typewriter"` debe ir DESPUÉS de comprobar `currentItem.type === "image"`. Estructura: `currentItem.type === "image" ? <imagen> : (animationType === "typewriter" ? <typewriter> : <AppearItem>)`. Si no, un logo con animación typewriter intentaría teclear su texto vacío en vez de mostrar la imagen.
+  - El render de imagen (compartido por la rama de aparición) muestra `<img>` con el mismo dimensionamiento que en scroll, envuelto en el `motion.div` existente que aplica la animación de entrada/salida.
+  - `getAppearItemDuration` (typewriter, `appearing.ts` línea ~19) usa `item.text.length`; para `image` el texto vacío da la duración mínima (`Math.max(2, 0)`), aceptable. La imagen no "teclea": usa la duración base de la animación.
 
 ### UI de edición (`CreditEditor.tsx`)
 
-Panel del item para `type === "image"`:
+Registro del tipo (HUECOS 1 y 2):
+
+- `TYPE_ICONS` (record local, `Record<CreditItemType, ComponentType>`): añadir `image: Image` (icono `Image` de lucide-react, añadir al import). TS obliga por exhaustividad.
+- `ADD_MENU_TYPES` (array literal): añadir `"image"` para que el logo sea insertable desde el menú de añadir. Sin esto, el tipo existe pero no se puede crear.
+
+Gating del panel (HUECO 3): el bloque expandido de controles de texto se abre hoy con `item.type !== "spacer" && item.type !== "divider"`; añadir `&& item.type !== "image"` para que un logo no muestre textarea/negrita/alineación de texto.
+
+Fila resumen (HUECO 6): la condición que hoy distingue spacer/divider del texto debe contemplar también `image`, mostrando "(logo / imagen)" (o miniatura) en vez de caer en la rama de texto y mostrar "(vacío)".
+
+Panel del item para `type === "image"` (nuevo bloque, como los de spacer/divider):
 
 - `<input type="file" accept="image/*">` oculto disparado por un botón; `FileReader.readAsDataURL` → `updateItem(item.id, { imageSrc })`.
 - Miniatura de la imagen actual + botón "Quitar" (`updateItem(item.id, { imageSrc: undefined })`).
 - Input numérico de ancho override ("Ancho %", placeholder = `config.imageWidth`, "vacío = global").
-- La fila resumen del item muestra "(logo / imagen)" o el indicador de imagen cargada.
 
 ### Config global (`ConfigPanel.tsx`)
 
@@ -103,8 +113,11 @@ La imagen se guarda como data URL en el estado persistido en `localStorage` (lí
 
 ### Consumo en renderers
 
+Hay TRES sitios que construyen estilo de texto inline (HUECO 5); los tres consumen `resolveTextStyle`:
+
 - `ScrollCredits.tsx` `getItemStyle`: sustituir las lecturas directas de `config.fontFamily`/`fontSize`/`textColor`/`letterSpacing`/`lineHeight` por los valores de `resolveTextStyle(item, config)`. `fontWeight`, sombra, alineación, transform, padding: sin cambios.
 - `AppearingCredits.tsx` `AppearItem`: mismo reemplazo en su estilo inline.
+- `AppearingCredits.tsx` bloque typewriter (líneas ~310-327): mismo reemplazo, para que el override por item aplique también con animación typewriter.
 
 ### UI de edición (`CreditEditor.tsx`)
 
