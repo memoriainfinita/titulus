@@ -4,6 +4,7 @@ import * as React from "react"
 import { motion } from "framer-motion"
 import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
 import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
+import { getScrollDurationSec, getScrollTranslateY } from "@/lib/credit/scroll"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -134,8 +135,7 @@ export function ScrollCredits({
     if (!isPlaying) return
     let raf: number
     let lastTime = performance.now()
-    const totalDistance = contentHeight + containerHeight
-    const durationSec = totalDistance > 0 ? totalDistance / config.scrollSpeed : 0
+    const durationSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
     const endPauseSec = config.endPause
 
     const tick = (now: number) => {
@@ -164,16 +164,17 @@ export function ScrollCredits({
   // Report duration to parent (for export)
   React.useEffect(() => {
     if (!onDurationChange) return
-    const totalDistance = contentHeight + containerHeight
-    const durationSec = totalDistance > 0 ? totalDistance / config.scrollSpeed : 0
+    const durationSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
     onDurationChange(durationSec + config.endPause)
   }, [contentHeight, containerHeight, config.scrollSpeed, config.endPause, onDurationChange])
 
   // Calculate translateY
-  const totalDistance = contentHeight + containerHeight
-  const translateY = config.scrollDirection === "up"
-    ? containerHeight - progress * totalDistance
-    : -contentHeight + progress * totalDistance
+  const translateY = getScrollTranslateY(
+    contentHeight,
+    containerHeight,
+    config.scrollDirection,
+    progress,
+  )
 
   // Background style
   const backgroundStyle: React.CSSProperties = config.useGradient
