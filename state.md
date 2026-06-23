@@ -32,8 +32,8 @@
 - [x] Paneles izquierdo y derecho sin barra de scroll: resuelto con `min-h-0` en las dos `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`).
 - [ ] Decidir si quitar el bloque `"pnpm"` inerte de `package.json`.
 
-### Tests (pendiente 2026-06-23)
-- [ ] No hay tests ni framework de testing (el scaffold z.ai no traía). Montar Vitest y cubrir la lógica pura: `getFontSize`/`getFontWeight`/`resolveAlignment` y reducers (`addItem`/`moveItem`/`reorderItems`/`duplicateItem`/`removeItem`) en `store.ts`; roundtrip `importProject`/`exportProject`; `buildGoogleFontUrl` en `fonts.ts`; geometría del scroll (extraer el cálculo de `ScrollCredits.tsx` a función testeable). UI/FFmpeg/drag&drop quedan fuera del alcance unit.
+### Tests (2026-06-23)
+- [x] Montado Vitest 4 + happy-dom. Scripts `test`/`test:run`, `vitest.config.ts` (alias `@`). Geometría del scroll extraída a `src/lib/credit/scroll.ts` (puro) y usada en `ScrollCredits.tsx`. 34 tests verdes en `scroll.test.ts`, `store.test.ts` (helpers + reducers + roundtrip import/export), `fonts.test.ts`. UI/FFmpeg/drag&drop fuera del alcance unit.
 
 ### Investigar / features pendientes (pedidos 2026-06-22)
 - [ ] Tiempos personalizados por título (duración individual de cada item). `CreditItem` no tiene campo de tiempo.
