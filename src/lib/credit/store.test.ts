@@ -182,6 +182,39 @@ describe("project import/export", () => {
     expect(config.scrollSpeed).toBe(99)
     expect(config.mode).toBe(DEFAULT_CONFIG.mode)
   })
+
+  it("preserves per-item text overrides through export then import", () => {
+    useCreditStore.setState({
+      items: [
+        { id: "a", type: "name", text: "A", fontSize: 50, color: "#ff0000", fontFamily: "'Roboto', sans-serif", letterSpacing: 3, lineHeight: 2 },
+      ],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    useCreditStore.getState().importProject(json)
+
+    const it0 = useCreditStore.getState().items[0]
+    expect(it0.fontSize).toBe(50)
+    expect(it0.color).toBe("#ff0000")
+    expect(it0.fontFamily).toBe("'Roboto', sans-serif")
+    expect(it0.letterSpacing).toBe(3)
+    expect(it0.lineHeight).toBe(2)
+  })
+
+  it("preserves image item fields and backfills imageWidth global", () => {
+    useCreditStore.setState({
+      items: [{ id: "img", type: "image", text: "", imageSrc: "data:image/png;base64,AAA", imageWidth: 80 }],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    useCreditStore.getState().importProject(json)
+
+    const it0 = useCreditStore.getState().items[0]
+    expect(it0.type).toBe("image")
+    expect(it0.imageSrc).toBe("data:image/png;base64,AAA")
+    expect(it0.imageWidth).toBe(80)
+    expect(useCreditStore.getState().config.imageWidth).toBe(DEFAULT_CONFIG.imageWidth)
+  })
 })
 
 describe("mergePersistedConfig", () => {
