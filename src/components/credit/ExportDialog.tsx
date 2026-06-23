@@ -32,7 +32,7 @@ interface ExportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   // Stage element ref to capture from (the hidden export stage)
-  stageRef: React.RefObject<HTMLDivElement>
+  stageRef: React.RefObject<HTMLDivElement | null>
   // Function to set manual progress on the export-stage credits component
   setManualProgress: (p: number) => void
   // Measured duration in seconds

@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
 import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
+import { resolveTextShadow } from "@/lib/credit/text-shadow"
+import { resolveTextBlur } from "@/lib/credit/text-blur"
 
 interface AppearingCreditsProps {
   items: CreditItem[]
@@ -23,8 +25,19 @@ function getVisibleItems(items: CreditItem[]): CreditItem[] {
   return items.filter((i) => i.type !== "spacer" && i.type !== "divider")
 }
 
+export interface AnimationTunables {
+  slide: number // px traveled by slide-* variants
+  blur: number // px blur for the blur variant
+  zoomFrom: number // initial scale for zoom
+  zoomTo: number // exit scale for zoom
+}
+
 // Get animation variants for the chosen type
-function getVariants(type: AnimationType, duration: number) {
+export function getVariants(
+  type: AnimationType,
+  duration: number,
+  { slide, blur, zoomFrom, zoomTo }: AnimationTunables,
+) {
   const transition = { duration, ease: [0.4, 0, 0.2, 1] as const }
   switch (type) {
     case "fade":
@@ -36,44 +49,44 @@ function getVariants(type: AnimationType, duration: number) {
       }
     case "slide-up":
       return {
-        initial: { opacity: 0, y: 80 },
+        initial: { opacity: 0, y: slide },
         animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -80 },
+        exit: { opacity: 0, y: -slide },
         transition,
       }
     case "slide-down":
       return {
-        initial: { opacity: 0, y: -80 },
+        initial: { opacity: 0, y: -slide },
         animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: 80 },
+        exit: { opacity: 0, y: slide },
         transition,
       }
     case "slide-left":
       return {
-        initial: { opacity: 0, x: 80 },
+        initial: { opacity: 0, x: slide },
         animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -80 },
+        exit: { opacity: 0, x: -slide },
         transition,
       }
     case "slide-right":
       return {
-        initial: { opacity: 0, x: -80 },
+        initial: { opacity: 0, x: -slide },
         animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: 80 },
+        exit: { opacity: 0, x: slide },
         transition,
       }
     case "zoom":
       return {
-        initial: { opacity: 0, scale: 0.6 },
+        initial: { opacity: 0, scale: zoomFrom },
         animate: { opacity: 1, scale: 1 },
-        exit: { opacity: 0, scale: 1.4 },
+        exit: { opacity: 0, scale: zoomTo },
         transition,
       }
     case "blur":
       return {
-        initial: { opacity: 0, filter: "blur(20px)" },
+        initial: { opacity: 0, filter: `blur(${blur}px)` },
         animate: { opacity: 1, filter: "blur(0px)" },
-        exit: { opacity: 0, filter: "blur(20px)" },
+        exit: { opacity: 0, filter: `blur(${blur}px)` },
         transition,
       }
     case "typewriter":
@@ -86,14 +99,22 @@ function getVariants(type: AnimationType, duration: number) {
   }
 }
 
+// Pull the animation tunables out of config
+function tunablesFromConfig(config: CreditConfig): AnimationTunables {
+  return {
+    slide: config.animSlideDistance,
+    blur: config.animBlurAmount,
+    zoomFrom: config.animZoomFrom,
+    zoomTo: config.animZoomTo,
+  }
+}
+
 function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }) {
   const align = resolveAlignment(item, config)
   const fontSize = getFontSize(item.type, config)
   const fontWeight = item.bold ? 700 : getFontWeight(item.type, config.fontWeight)
-  let shadow: string | undefined
-  if (config.useTextShadow) {
-    shadow = `${config.textShadowX}px ${config.textShadowY}px ${config.textShadowBlur}px ${config.textShadowColor}`
-  }
+  const shadow = resolveTextShadow(config)
+  const blur = resolveTextBlur(item, config)
   return (
     <div
       style={{
@@ -105,6 +126,7 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
         lineHeight: config.lineHeight,
         textAlign: align,
         textShadow: shadow,
+        filter: blur > 0 ? `blur(${blur}px)` : undefined,
         textTransform: item.uppercase ? "uppercase" : undefined,
         fontStyle: item.italic ? "italic" : undefined,
         padding: `0 ${config.paddingX}px`,
@@ -166,13 +188,13 @@ export function AppearingCredits({
     if (config.animationType === "typewriter") {
       const item = visibleItems[foundIdx]
       const text = item.text || ""
-      const typingDuration = Math.max(2, text.length * 0.05)
+      const typingDuration = Math.max(2, text.length * (config.typewriterSpeed / 1000))
       const charsToShow = Math.min(text.length, Math.floor((timeIntoItem / typingDuration) * text.length))
       setTypedText(text.slice(0, charsToShow))
     } else {
       setTypedText("")
     }
-  }, [manualProgress, visibleItems, itemDurations, totalDuration, config.animationType, currentIndex])
+  }, [manualProgress, visibleItems, itemDurations, totalDuration, config.animationType, config.typewriterSpeed, currentIndex])
 
   // Reset on restart
   React.useEffect(() => {
@@ -224,9 +246,9 @@ export function AppearingCredits({
       i += 1
       setTypedText(text.slice(0, i))
       if (i >= text.length) clearInterval(interval)
-    }, 50)
+    }, config.typewriterSpeed)
     return () => clearInterval(interval)
-  }, [isPlaying, currentIndex, visibleItems, config.animationType, manualProgress])
+  }, [isPlaying, currentIndex, visibleItems, config.animationType, config.typewriterSpeed, manualProgress])
 
   // Background
   const backgroundStyle: React.CSSProperties = config.useGradient
@@ -269,33 +291,37 @@ export function AppearingCredits({
   }
 
   const currentItem = visibleItems[Math.min(currentIndex, visibleItems.length - 1)]
-  const variants = getVariants(config.animationType, config.animationDuration)
+  const variants = getVariants(config.animationType, config.animationDuration, tunablesFromConfig(config))
 
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative"
       style={backgroundStyle}
     >
-      {/* Top fade */}
-      <div
-        className="absolute top-0 left-0 right-0 pointer-events-none z-10"
-        style={{
-          height: "15%",
-          background: config.useGradient
-            ? `linear-gradient(to bottom, ${config.gradientFrom}, transparent)`
-            : `linear-gradient(to bottom, ${config.backgroundColor}, transparent)`,
-        }}
-      />
-      {/* Bottom fade */}
-      <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-none z-10"
-        style={{
-          height: "15%",
-          background: config.useGradient
-            ? `linear-gradient(to top, ${config.gradientTo}, transparent)`
-            : `linear-gradient(to top, ${config.backgroundColor}, transparent)`,
-        }}
-      />
+      {config.vignetteEnabled && (
+        <>
+          {/* Top fade */}
+          <div
+            className="absolute top-0 left-0 right-0 pointer-events-none z-10"
+            style={{
+              height: `${config.vignetteHeight}%`,
+              background: config.useGradient
+                ? `linear-gradient(to bottom, ${config.gradientFrom}, transparent)`
+                : `linear-gradient(to bottom, ${config.backgroundColor}, transparent)`,
+            }}
+          />
+          {/* Bottom fade */}
+          <div
+            className="absolute bottom-0 left-0 right-0 pointer-events-none z-10"
+            style={{
+              height: `${config.vignetteHeight}%`,
+              background: config.useGradient
+                ? `linear-gradient(to top, ${config.gradientTo}, transparent)`
+                : `linear-gradient(to top, ${config.backgroundColor}, transparent)`,
+            }}
+          />
+        </>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -324,6 +350,10 @@ export function AppearingCredits({
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
                 minHeight: "1.5em",
+                filter:
+                  resolveTextBlur(currentItem, config) > 0
+                    ? `blur(${resolveTextBlur(currentItem, config)}px)`
+                    : undefined,
               }}
             >
               {typedText}

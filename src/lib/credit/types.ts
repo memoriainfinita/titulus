@@ -36,6 +36,8 @@ export interface CreditItem {
   // Appearing mode only: overrides config.pauseDuration (hold time) for this item.
   // undefined = inherit the global pause. Negative values are ignored.
   pauseOverride?: number
+  // Text blur (px). undefined = inherit config.textBlur. Negative values are ignored.
+  textBlur?: number
   // Spacer override: alto en px. undefined = hereda config.spacerHeight.
   spacerHeight?: number
   // Divider overrides. undefined = hereda el config.divider* correspondiente.
@@ -93,10 +95,14 @@ export interface CreditConfig {
   textShadowBlur: number
   textShadowX: number
   textShadowY: number
+  textShadowOpacity: number // 0-1
+  textBlur: number // px blur applied to text (global default)
+  // Vignette (top/bottom fades), shared by both modes
+  vignetteEnabled: boolean
+  vignetteHeight: number // percent of stage height
   // Scroll mode
   scrollSpeed: number // px per second
   scrollDirection: "up" | "down"
-  startDelay: number
   endPause: number
   // Appearing mode
   animationType: AnimationType
@@ -104,6 +110,12 @@ export interface CreditConfig {
   pauseDuration: number // seconds between items
   loop: boolean
   showAllAtOnce: boolean
+  typewriterSpeed: number // ms per character for the typewriter animation
+  // Appearing animation tunables
+  animSlideDistance: number // px traveled by slide-* variants
+  animBlurAmount: number // px blur for the blur variant
+  animZoomFrom: number // initial scale for zoom variant
+  animZoomTo: number // exit scale for zoom variant
   // Stage
   stageWidth: number // 16, 21, 9, etc.
   stageHeight: number
@@ -151,15 +163,23 @@ export const DEFAULT_CONFIG: CreditConfig = {
   textShadowBlur: 12,
   textShadowX: 0,
   textShadowY: 2,
+  textShadowOpacity: 1,
+  textBlur: 0,
+  vignetteEnabled: true,
+  vignetteHeight: 20,
   scrollSpeed: 60,
   scrollDirection: "up",
-  startDelay: 1,
   endPause: 3,
   animationType: "fade",
   animationDuration: 1.5,
   pauseDuration: 1.5,
   loop: true,
   showAllAtOnce: false,
+  typewriterSpeed: 50,
+  animSlideDistance: 80,
+  animBlurAmount: 20,
+  animZoomFrom: 0.6,
+  animZoomTo: 1.4,
   stageWidth: 1280,
   stageHeight: 720,
   stageRatio: "16:9",

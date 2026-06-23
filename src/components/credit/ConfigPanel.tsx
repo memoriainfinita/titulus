@@ -45,6 +45,17 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 
 // Section wrapper with a title and icon
@@ -140,17 +151,26 @@ export function ConfigPanel() {
           <Settings2 className="h-4 w-4" />
           Configuración
         </h3>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 text-xs"
-          onClick={() => {
-            if (confirm("¿Restablecer toda la configuración?")) resetConfig()
-          }}
-        >
-          <RotateCcw className="h-3.5 w-3.5 mr-1" />
-          Reset
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="ghost" className="h-7 text-xs">
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              Reset
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
@@ -405,8 +425,46 @@ export function ConfigPanel() {
                     />
                   </Field>
                 </div>
+                <Field label="Opacidad de la sombra" hint={`${Math.round(config.textShadowOpacity * 100)}%`}>
+                  <Slider
+                    value={[config.textShadowOpacity]}
+                    onValueChange={(v) => updateConfig({ textShadowOpacity: v[0] })}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                  />
+                </Field>
               </>
             )}
+            <Separator />
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Viñeta (desvanecido superior/inferior)</Label>
+              <Switch
+                checked={config.vignetteEnabled}
+                onCheckedChange={(v) => updateConfig({ vignetteEnabled: v })}
+              />
+            </div>
+            {config.vignetteEnabled && (
+              <Field label="Altura de la viñeta" hint={`${config.vignetteHeight}%`}>
+                <Slider
+                  value={[config.vignetteHeight]}
+                  onValueChange={(v) => updateConfig({ vignetteHeight: v[0] })}
+                  min={0}
+                  max={50}
+                  step={1}
+                />
+              </Field>
+            )}
+            <Separator />
+            <Field label="Desenfoque del texto" hint={`${config.textBlur}px`}>
+              <Slider
+                value={[config.textBlur]}
+                onValueChange={(v) => updateConfig({ textBlur: v[0] })}
+                min={0}
+                max={20}
+                step={0.5}
+              />
+            </Field>
           </Section>
 
           {/* LAYOUT */}
@@ -594,18 +652,60 @@ export function ConfigPanel() {
                   step={0.1}
                 />
               </Field>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Repetir en bucle</Label>
-                <Switch
-                  checked={config.loop}
-                  onCheckedChange={(v) => updateConfig({ loop: v })}
-                />
-              </div>
-              {config.animationType === "typewriter" && (
-                <div className="text-xs text-muted-foreground bg-muted/40 p-2 rounded">
-                  La velocidad de la máquina de escribir se ajusta automáticamente
-                  según la longitud del texto (~50ms por carácter).
+              {config.animationType.startsWith("slide") && (
+                <Field label="Distancia de deslizamiento" hint={`${config.animSlideDistance}px`}>
+                  <Slider
+                    value={[config.animSlideDistance]}
+                    onValueChange={(v) => updateConfig({ animSlideDistance: v[0] })}
+                    min={10}
+                    max={300}
+                    step={5}
+                  />
+                </Field>
+              )}
+              {config.animationType === "blur" && (
+                <Field label="Intensidad del desenfoque" hint={`${config.animBlurAmount}px`}>
+                  <Slider
+                    value={[config.animBlurAmount]}
+                    onValueChange={(v) => updateConfig({ animBlurAmount: v[0] })}
+                    min={0}
+                    max={60}
+                    step={1}
+                  />
+                </Field>
+              )}
+              {config.animationType === "zoom" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Escala inicial" hint={`${config.animZoomFrom}×`}>
+                    <Slider
+                      value={[config.animZoomFrom]}
+                      onValueChange={(v) => updateConfig({ animZoomFrom: v[0] })}
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                    />
+                  </Field>
+                  <Field label="Escala de salida" hint={`${config.animZoomTo}×`}>
+                    <Slider
+                      value={[config.animZoomTo]}
+                      onValueChange={(v) => updateConfig({ animZoomTo: v[0] })}
+                      min={1}
+                      max={3}
+                      step={0.05}
+                    />
+                  </Field>
                 </div>
+              )}
+              {config.animationType === "typewriter" && (
+                <Field label="Velocidad de tecleo" hint={`${config.typewriterSpeed}ms/carácter`}>
+                  <Slider
+                    value={[config.typewriterSpeed]}
+                    onValueChange={(v) => updateConfig({ typewriterSpeed: v[0] })}
+                    min={10}
+                    max={200}
+                    step={5}
+                  />
+                </Field>
               )}
             </Section>
           )}

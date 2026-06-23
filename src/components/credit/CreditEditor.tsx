@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
-import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle } from "@/lib/credit/types"
+import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle, DEFAULT_ITEMS } from "@/lib/credit/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -49,6 +49,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 
 const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: string }>> = {
@@ -77,10 +88,11 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   isSelected: boolean
   onSelect: () => void
 }) {
-  const { updateItem, removeItem, duplicateItem, moveItem, items, config } = useCreditStore()
+  const { updateItem, removeItem, duplicateItem, moveItem, reorderItems, items, config } = useCreditStore()
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
   const isLast = index === items.length - 1
+  const [dragOver, setDragOver] = React.useState(false)
 
   const toggleBold = () => updateItem(item.id, { bold: !item.bold })
   const toggleItalic = () => updateItem(item.id, { italic: !item.italic })
@@ -93,11 +105,34 @@ function ItemRow({ item, index, isSelected, onSelect }: {
       className={cn(
         "group rounded-md border bg-card transition-colors cursor-pointer",
         isSelected ? "border-primary ring-1 ring-primary" : "hover:bg-accent/40",
+        dragOver && "border-primary border-dashed",
       )}
       onClick={onSelect}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "move"
+        if (!dragOver) setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const fromId = e.dataTransfer.getData("text/plain")
+        if (fromId && fromId !== item.id) reorderItems(fromId, item.id)
+      }}
     >
       <div className="flex items-center gap-2 p-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab opacity-50" />
+        <span
+          className="shrink-0 cursor-grab"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", item.id)
+            e.dataTransfer.effectAllowed = "move"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground opacity-50" />
+        </span>
         <div className="flex items-center justify-center w-7 h-7 rounded bg-muted shrink-0">
           <Icon className="h-4 w-4" />
         </div>
@@ -287,6 +322,26 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               <span className="text-[10px] text-muted-foreground">vacío = global</span>
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Desenfoque (px)</span>
+            <Input
+              type="number"
+              min={0}
+              step={0.5}
+              value={item.textBlur ?? ""}
+              placeholder={String(config.textBlur)}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw === "") { updateItem(item.id, { textBlur: undefined }); return }
+                const n = Number(raw)
+                if (Number.isNaN(n)) return
+                updateItem(item.id, { textBlur: Math.max(0, n) })
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+            <span className="text-[10px] text-muted-foreground">vacío = global</span>
+          </div>
         </div>
       )}
 
@@ -420,6 +475,9 @@ function ItemRow({ item, index, isSelected, onSelect }: {
 export function CreditEditor() {
   const { items, selectedItemId, selectItem, addItem, clearItems, loadItems } = useCreditStore()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [exampleOpen, setExampleOpen] = React.useState(false)
+
+  const loadExample = () => loadItems(DEFAULT_ITEMS.map((i) => ({ ...i })))
 
   const handleExport = () => {
     const data = JSON.stringify({ items }, null, 2)
@@ -465,6 +523,31 @@ export function CreditEditor() {
             onChange={handleImport}
             className="hidden"
           />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            onClick={() => {
+              if (items.length === 0) loadExample()
+              else setExampleOpen(true)
+            }}
+          >
+            Ejemplo
+          </Button>
+          <AlertDialog open={exampleOpen} onOpenChange={setExampleOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Cargar créditos de ejemplo?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Reemplaza la lista actual por los créditos de ejemplo. Se perderán los cambios no exportados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={loadExample}>Cargar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             size="sm"
             variant="ghost"
@@ -533,17 +616,30 @@ export function CreditEditor() {
 
       {items.length > 0 && (
         <div className="p-3 border-t">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="w-full text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm("¿Eliminar todos los créditos?")) clearItems()
-            }}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Vaciar lista
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Vaciar lista
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar todos los créditos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se vaciará toda la lista. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearItems()}>Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
     </div>

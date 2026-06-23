@@ -11,6 +11,7 @@ import {
   Upload,
   Eye,
   Video,
+  Repeat,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { ScrollCredits } from "./ScrollCredits"
@@ -27,6 +28,7 @@ export function CreditPreview() {
     isPlaying,
     isFullscreen,
     previewKey,
+    updateConfig,
     setPlaying,
     setFullscreen,
     restartPreview,
@@ -211,6 +213,15 @@ export function CreditPreview() {
         <Button size="sm" variant="outline" onClick={restartPreview}>
           <RotateCcw className="h-4 w-4 mr-1" />
           Reiniciar
+        </Button>
+        <Button
+          size="sm"
+          variant={config.loop ? "default" : "outline"}
+          onClick={() => updateConfig({ loop: !config.loop })}
+          title="Repetir en bucle"
+        >
+          <Repeat className="h-4 w-4 mr-1" />
+          Bucle
         </Button>
         <Button size="sm" variant="outline" onClick={toggleFullscreen}>
           {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}

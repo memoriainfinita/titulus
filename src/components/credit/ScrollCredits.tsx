@@ -4,8 +4,10 @@ import * as React from "react"
 import { motion } from "framer-motion"
 import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
 import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
-import { getScrollDurationSec, getScrollTranslateY } from "@/lib/credit/scroll"
+import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
+import { resolveTextShadow } from "@/lib/credit/text-shadow"
+import { resolveTextBlur } from "@/lib/credit/text-blur"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -25,10 +27,8 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
   const fontSize = getFontSize(item.type, config)
   const fontWeight = getFontWeight(item.type, config.fontWeight)
 
-  let shadow: string | undefined
-  if (config.useTextShadow && item.type !== "spacer" && item.type !== "divider") {
-    shadow = `${config.textShadowX}px ${config.textShadowY}px ${config.textShadowBlur}px ${config.textShadowColor}`
-  }
+  const shadow = resolveTextShadow(config)
+  const blur = resolveTextBlur(item, config)
 
   return {
     fontFamily: config.fontFamily,
@@ -39,6 +39,7 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
     lineHeight: config.lineHeight,
     textAlign: align,
     textShadow: shadow,
+    filter: blur > 0 ? `blur(${blur}px)` : undefined,
     textTransform: item.uppercase ? "uppercase" : undefined,
     fontStyle: item.italic ? "italic" : undefined,
     padding: `0 ${config.paddingX}px`,
@@ -137,6 +138,7 @@ export function ScrollCredits({
     if (manualProgress !== null) return
     if (!isPlaying) return
     let raf: number
+    let pauseTimer: ReturnType<typeof setTimeout> | null = null
     let lastTime = performance.now()
     const durationSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
     const endPauseSec = config.endPause
@@ -145,24 +147,34 @@ export function ScrollCredits({
       const delta = (now - lastTime) / 1000
       lastTime = now
       setInternalProgress((prev) => {
-        const increment = (1 / durationSec) * delta
-        const next = prev + increment
-        if (next >= 1) {
-          // End pause then loop
-          if (endPauseSec > 0) {
-            // schedule restart after pause
-            setTimeout(() => setInternalProgress(0), endPauseSec * 1000)
+        const step = stepScrollProgress(prev, delta, durationSec, config.loop, endPauseSec)
+        switch (step.kind) {
+          case "run":
+            return step.progress
+          case "stop":
             return 1
-          }
-          return 0
+          case "wrap":
+            return 0
+          case "pause":
+            // Hold at the end and schedule a single restart after the pause.
+            // The tick runs every frame, so guard against piling up timers.
+            if (pauseTimer === null) {
+              pauseTimer = setTimeout(() => {
+                pauseTimer = null
+                setInternalProgress(0)
+              }, endPauseSec * 1000)
+            }
+            return 1
         }
-        return next
       })
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [isPlaying, contentHeight, containerHeight, config.scrollSpeed, config.endPause, restartKey, manualProgress])
+    return () => {
+      cancelAnimationFrame(raf)
+      if (pauseTimer !== null) clearTimeout(pauseTimer)
+    }
+  }, [isPlaying, contentHeight, containerHeight, config.scrollSpeed, config.endPause, config.loop, restartKey, manualProgress])
 
   // Report duration to parent (for export)
   React.useEffect(() => {
@@ -192,26 +204,30 @@ export function ScrollCredits({
       className="relative w-full h-full overflow-hidden"
       style={backgroundStyle}
     >
-      {/* Top fade */}
-      <div
-        className="absolute top-0 left-0 right-0 pointer-events-none z-10"
-        style={{
-          height: "20%",
-          background: config.useGradient
-            ? `linear-gradient(to bottom, ${config.gradientFrom}, transparent)`
-            : `linear-gradient(to bottom, ${config.backgroundColor}, transparent)`,
-        }}
-      />
-      {/* Bottom fade */}
-      <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-none z-10"
-        style={{
-          height: "20%",
-          background: config.useGradient
-            ? `linear-gradient(to top, ${config.gradientTo}, transparent)`
-            : `linear-gradient(to top, ${config.backgroundColor}, transparent)`,
-        }}
-      />
+      {config.vignetteEnabled && (
+        <>
+          {/* Top fade */}
+          <div
+            className="absolute top-0 left-0 right-0 pointer-events-none z-10"
+            style={{
+              height: `${config.vignetteHeight}%`,
+              background: config.useGradient
+                ? `linear-gradient(to bottom, ${config.gradientFrom}, transparent)`
+                : `linear-gradient(to bottom, ${config.backgroundColor}, transparent)`,
+            }}
+          />
+          {/* Bottom fade */}
+          <div
+            className="absolute bottom-0 left-0 right-0 pointer-events-none z-10"
+            style={{
+              height: `${config.vignetteHeight}%`,
+              background: config.useGradient
+                ? `linear-gradient(to top, ${config.gradientTo}, transparent)`
+                : `linear-gradient(to top, ${config.backgroundColor}, transparent)`,
+            }}
+          />
+        </>
+      )}
       <div
         ref={contentRef}
         className="absolute left-0 right-0"
@@ -223,8 +239,6 @@ export function ScrollCredits({
         {items.map((item) => (
           <CreditLine key={item.id} item={item} config={config} />
         ))}
-        {/* Bottom padding so last item scrolls off-screen above */}
-        <div style={{ height: containerHeight }} />
       </div>
     </div>
   )
