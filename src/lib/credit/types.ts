@@ -8,6 +8,7 @@ export type CreditItemType =
   | "description"
   | "spacer"
   | "divider"
+  | "image"
 
 export type Alignment = "left" | "center" | "right"
 
@@ -52,6 +53,9 @@ export interface CreditItem {
   fontFamily?: string // vacío = hereda config.fontFamily
   letterSpacing?: number // px; admite 0 y negativos
   lineHeight?: number // <= 0 se ignora
+  // Image (logo) item.
+  imageSrc?: string // data URL
+  imageWidth?: number // % del ancho del escenario; undefined = hereda config.imageWidth
 }
 
 export interface FontItem {
@@ -94,6 +98,7 @@ export interface CreditConfig {
   dividerOpacity: number // 0-1
   dividerStyle: DividerStyle
   dividerColor: string // empty = inherit textColor
+  imageWidth: number // percent of stage width
   // Effects
   textShadow: string
   useTextShadow: boolean
@@ -163,6 +168,7 @@ export const DEFAULT_CONFIG: CreditConfig = {
   dividerOpacity: 0.4,
   dividerStyle: "solid",
   dividerColor: "",
+  imageWidth: 40,
   textShadow: "0 2px 12px rgba(0,0,0,0.6)",
   useTextShadow: true,
   textShadowColor: "#000000",
@@ -199,6 +205,7 @@ export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
   description: "Descripción",
   spacer: "Espacio",
   divider: "Separador",
+  image: "Logo / Imagen",
 }
 
 export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
@@ -209,6 +216,7 @@ export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
   description: "Text",
   spacer: "Space",
   divider: "Minus",
+  image: "Image",
 }
 
 // Default sample credits so the app looks good on first load
