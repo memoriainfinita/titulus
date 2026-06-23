@@ -285,6 +285,10 @@ export const useCreditStore = create<CreditState>()(
         fonts: state.fonts,
         projectName: state.projectName,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<CreditState>
+        return { ...current, ...p, config: mergePersistedConfig(p.config) }
+      },
     },
   ),
 )
@@ -328,4 +332,12 @@ export function getFontWeight(type: CreditItemType, baseWeight: number): number 
 // Resolve alignment for an item
 export function resolveAlignment(item: CreditItem, config: CreditConfig): Alignment {
   return item.align ?? config.alignment
+}
+
+// Merge a persisted (possibly older) config over the current defaults, so
+// config keys added after a user's state was first saved are backfilled.
+export function mergePersistedConfig(
+  persistedConfig: Partial<CreditConfig> | undefined,
+): CreditConfig {
+  return { ...DEFAULT_CONFIG, ...(persistedConfig ?? {}) }
 }

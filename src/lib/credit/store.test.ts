@@ -4,6 +4,7 @@ import {
   getFontSize,
   getFontWeight,
   resolveAlignment,
+  mergePersistedConfig,
 } from "./store"
 import { CreditItem, DEFAULT_CONFIG } from "./types"
 
@@ -146,6 +147,23 @@ describe("project import/export", () => {
     expect(items[1].pauseOverride).toBeUndefined()
   })
 
+  it("preserves new spacer/divider item overrides through export then import", () => {
+    useCreditStore.setState({
+      items: [
+        { id: "s", type: "spacer", text: "", spacerHeight: 120 },
+        { id: "d", type: "divider", text: "", dividerThickness: 4, dividerWidth: 100, dividerOpacity: 0.8, dividerStyle: "dashed", dividerColor: "#ff0000" },
+      ],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    useCreditStore.getState().importProject(json)
+
+    const { items } = useCreditStore.getState()
+    expect(items[0].spacerHeight).toBe(120)
+    expect(items[1].dividerStyle).toBe("dashed")
+    expect(items[1].dividerColor).toBe("#ff0000")
+  })
+
   it("rejects invalid JSON", () => {
     expect(useCreditStore.getState().importProject("{ not json")).toBe(false)
   })
@@ -163,5 +181,19 @@ describe("project import/export", () => {
     const { config } = useCreditStore.getState()
     expect(config.scrollSpeed).toBe(99)
     expect(config.mode).toBe(DEFAULT_CONFIG.mode)
+  })
+})
+
+describe("mergePersistedConfig", () => {
+  it("backfills missing keys from DEFAULT_CONFIG", () => {
+    const merged = mergePersistedConfig({ scrollSpeed: 99 } as Partial<typeof DEFAULT_CONFIG>)
+    expect(merged.scrollSpeed).toBe(99)
+    expect(merged.spacerHeight).toBe(DEFAULT_CONFIG.spacerHeight)
+    expect(merged.dividerStyle).toBe(DEFAULT_CONFIG.dividerStyle)
+    expect(merged.dividerColor).toBe(DEFAULT_CONFIG.dividerColor)
+  })
+
+  it("returns full defaults when given undefined", () => {
+    expect(mergePersistedConfig(undefined)).toEqual(DEFAULT_CONFIG)
   })
 })
