@@ -216,8 +216,6 @@ export function ScrollCredits({
           willChange: "transform",
         }}
       >
-        {/* Top padding so first item starts off-screen below */}
-        <div style={{ height: containerHeight }} />
         {items.map((item) => (
           <CreditLine key={item.id} item={item} config={config} />
         ))}
