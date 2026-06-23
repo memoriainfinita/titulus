@@ -58,3 +58,4 @@
 - [ ] Vignette/desvanecido sin control: los fades superior e inferior ("Top fade"/"Bottom fade" en `ScrollCredits.tsx`, mismos en `AppearingCredits.tsx`) tienen `height: "20%"` fijo y siempre activos; sin toggle ni ajuste de altura. Pedido 2026-06-23.
 - [ ] Opacidad de la sombra de texto no configurable: la sombra se construye `${X}px ${Y}px ${blur}px ${textShadowColor}` con color hex sin alpha, siempre a opacidad plena. Añadir control de opacidad de sombra. Pedido 2026-06-23.
 - [ ] Auditoría de valores hardcodeados de las animaciones de aparición (`getVariants` en `AppearingCredits.tsx`): distancia de slide (80px), intensidad de blur (20px) y escala de zoom (0.6/1.4) fijas. Valorar exponer. Pedido 2026-06-23.
+- [ ] Mostrar opcionalmente los márgenes seguros (title-safe / action-safe) del frame como guía visual en el preview: overlay no exportable, con toggle en la UI. Pedido 2026-06-23.
