@@ -422,19 +422,6 @@ export function ExportDialog({
                 <PhaseIcon phase={progress.phase} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{progress.message}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Fase: {
-                      progress.phase === "loading-ffmpeg" ? "Cargando motor" :
-                      progress.phase === "capturing" ? "Capturando frames" :
-                      progress.phase === "encoding" ? "Codificando" :
-                      progress.phase === "finalizing" ? "Finalizando" :
-                      progress.phase === "done" ? "Completado" :
-                      "Error"
-                    }
-                    {progress.phase === "capturing" && progress.totalFrames > 0 && (
-                      <> · {progress.currentFrame}/{progress.totalFrames}</>
-                    )}
-                  </p>
                 </div>
                 {progress.phase === "done" && resultBlob && (
                   <Badge variant="secondary" className="shrink-0">
