@@ -340,21 +340,6 @@ export function AppearingCredits({
           )}
         </motion.div>
       </AnimatePresence>
-
-      {/* Progress indicator (subtle dots at bottom) */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5 z-20 opacity-30">
-        {visibleItems.slice(0, 30).map((item, i) => (
-          <div
-            key={item.id}
-            className="w-1.5 h-1.5 rounded-full transition-all"
-            style={{
-              backgroundColor: config.textColor,
-              opacity: i === currentIndex ? 1 : 0.3,
-              transform: i === currentIndex ? "scale(1.4)" : "scale(1)",
-            }}
-          />
-        ))}
-      </div>
     </div>
   )
 }
