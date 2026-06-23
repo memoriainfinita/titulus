@@ -28,7 +28,7 @@ export interface ExportProgress {
 const FFMPEG_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd"
 
 // Quality presets -> ffmpeg args
-const QUALITY_PRESETS: Record<ExportOptions["quality"], { crf: number; preset: string }> = {
+const QUALITY_PRESETS: Record<ExportOptions["quality"], { crf: string; preset: string }> = {
   fast: { crf: "28", preset: "ultrafast" },
   balanced: { crf: "23", preset: "veryfast" },
   high: { crf: "18", preset: "medium" },
@@ -160,7 +160,7 @@ export function useVideoExport() {
 
         // Cleanup any previous frames in MEMFS
         try {
-          const prevFiles = ffmpeg.listDir("/")
+          const prevFiles = await ffmpeg.listDir("/")
           for (const f of prevFiles) {
             if (f.name.startsWith("frame_") && f.name.endsWith(".png")) {
               try {
@@ -321,7 +321,7 @@ export function useVideoExport() {
 
         const data = await ffmpeg.readFile(outputFile)
         const mime = options.format === "mp4" ? "video/mp4" : "video/webm"
-        const blob = new Blob([data as Uint8Array], { type: mime })
+        const blob = new Blob([data as BlobPart], { type: mime })
 
         // Cleanup MEMFS to free memory
         try {
