@@ -573,6 +573,16 @@ export function ConfigPanel() {
                 />
               </Field>
             )}
+            <Separator />
+            <Field label="Ancho del logo" hint={`${config.imageWidth}%`}>
+              <Slider
+                value={[config.imageWidth]}
+                onValueChange={(v) => updateConfig({ imageWidth: v[0] })}
+                min={0}
+                max={100}
+                step={1}
+              />
+            </Field>
           </Section>
 
           {/* MODE-SPECIFIC */}

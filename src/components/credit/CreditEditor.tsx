@@ -15,6 +15,7 @@ import {
   Text,
   Space,
   Minus,
+  Image as ImageIcon,
   Bold,
   Italic,
   AlignLeft,
@@ -70,6 +71,7 @@ const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: strin
   description: Text,
   spacer: Space,
   divider: Minus,
+  image: ImageIcon,
 }
 
 const ADD_MENU_TYPES: CreditItemType[] = [
@@ -80,6 +82,7 @@ const ADD_MENU_TYPES: CreditItemType[] = [
   "description",
   "spacer",
   "divider",
+  "image",
 ]
 
 function ItemRow({ item, index, isSelected, onSelect }: {
@@ -149,13 +152,19 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               <Badge variant="secondary" className="text-[10px] py-0 px-1">{item.pauseOverride}s</Badge>
             )}
           </div>
-          {item.type === "spacer" || item.type === "divider" ? (
+          {item.type === "spacer" || item.type === "divider" || item.type === "image" ? (
             <p className={cn(
               "text-xs italic",
-              config.mode === "appearing" ? "text-muted-foreground/50" : "text-muted-foreground",
+              config.mode === "appearing" && (item.type === "spacer" || item.type === "divider")
+                ? "text-muted-foreground/50"
+                : "text-muted-foreground",
             )}>
-              {item.type === "spacer" ? "(espacio en blanco)" : "(línea separadora)"}
-              {config.mode === "appearing" && " — no se aplica en aparición"}
+              {item.type === "spacer"
+                ? "(espacio en blanco)"
+                : item.type === "divider"
+                  ? "(línea separadora)"
+                  : item.imageSrc ? "(logo cargado)" : "(logo / imagen sin cargar)"}
+              {config.mode === "appearing" && (item.type === "spacer" || item.type === "divider") && " — no se aplica en aparición"}
             </p>
           ) : (
             <p className="text-sm truncate">{item.text || <span className="text-muted-foreground italic">(vacío)</span>}</p>
@@ -227,7 +236,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
         </div>
       </div>
 
-      {isSelected && item.type !== "spacer" && item.type !== "divider" && (
+      {isSelected && item.type !== "spacer" && item.type !== "divider" && item.type !== "image" && (
         <div className="border-t px-2 py-2 space-y-2 bg-muted/30">
           {item.type === "title" || item.type === "subtitle" ? (
             <Input
@@ -561,6 +570,58 @@ function ItemRow({ item, index, isSelected, onSelect }: {
                 global
               </Button>
             )}
+          </div>
+        </div>
+      )}
+
+      {isSelected && item.type === "image" && (
+        <div className="border-t px-2 py-2 space-y-2 bg-muted/30" onClick={(e) => e.stopPropagation()}>
+          {item.imageSrc && (
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.imageSrc} alt="" className="h-12 w-auto max-w-[120px] rounded border object-contain bg-background" />
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-destructive"
+                onClick={() => updateItem(item.id, { imageSrc: undefined })}>
+                Quitar
+              </Button>
+            </div>
+          )}
+          <div>
+            <input
+              type="file"
+              accept="image/*"
+              id={`logo-file-${item.id}`}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = () => updateItem(item.id, { imageSrc: String(reader.result) })
+                reader.readAsDataURL(file)
+                e.target.value = ""
+              }}
+            />
+            <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+              <label htmlFor={`logo-file-${item.id}`} className="cursor-pointer">
+                {item.imageSrc ? "Cambiar imagen" : "Subir imagen"}
+              </label>
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">Ancho %</span>
+            <Input
+              type="number" min={0} max={100} step={1}
+              value={item.imageWidth ?? ""}
+              placeholder={String(config.imageWidth)}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw === "") { updateItem(item.id, { imageWidth: undefined }); return }
+                const n = Number(raw); if (Number.isNaN(n)) return
+                updateItem(item.id, { imageWidth: Math.max(0, Math.min(100, n)) })
+              }}
+              className="h-7 w-24 text-sm"
+            />
+            <span className="text-[10px] text-muted-foreground">vacío = global</span>
           </div>
         </div>
       )}
