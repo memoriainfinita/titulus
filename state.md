@@ -28,18 +28,21 @@
 - 2026-06-22: eliminada dependencia muerta `z-ai-web-dev-sdk` (no se importaba); lockfile actualizado. Commit `195cf4b`. Creado `README.md` del proyecto. Commit `1a6abee`.
 - 2026-06-23: arreglado bug del primer texto en scroll (eliminado padding superior duplicado en `ScrollCredits.tsx`). Implementado modo oscuro de la UI con `next-themes` (`theme-provider.tsx`, `theme-toggle.tsx`, wrap en `layout.tsx`, toggle en `page.tsx`). Verificado en navegador (HTTP 200, sin errores de compilación). Bug de controles en el vídeo confirmado no reproducible por el usuario. Triage de TODOs: `scrollSpeed` y fuentes custom ya estaban implementados. Nuevos TODO: tests con Vitest, resolución de export elegible. Errores de `tsc` preexistentes en `useVideoExport.ts`/`CreditPreview.tsx`/`examples` (no introducidos esta sesión).
 
+- 2026-06-23: implementada pausa personalizada por item en modo appearing. Campo opcional `pauseOverride` en `CreditItem` (`types.ts`). Lógica de duración des-duplicada y extraída a módulo puro `src/lib/credit/appearing.ts` (`getAppearItemDuration` + `resolveItemPause`); `AppearingCredits.tsx` ahora la consume en vez de repetir el cálculo inline. UI: input "Pausa (s)" + badge en `CreditEditor.tsx`, visibles solo en modo appearing. Tests: nuevo `appearing.test.ts` (7) + caso roundtrip de `pauseOverride` en `store.test.ts`; 42 verdes. Eliminado el bloque `"pnpm"` inerte de `package.json`. Caché `.next` corrupta (TurbopackInternalError "Failed to write app endpoint", agravado por "Slow filesystem detected" en D:) borrada y dev server reiniciado limpio en :3000 (HTTP 200). Verificado en navegador por el usuario.
+
 ## TODO
 - [x] Paneles izquierdo y derecho sin barra de scroll: resuelto con `min-h-0` en las dos `ScrollArea` (`ConfigPanel.tsx`, `CreditEditor.tsx`).
-- [ ] Decidir si quitar el bloque `"pnpm"` inerte de `package.json`.
+- [x] Quitar el bloque `"pnpm"` inerte de `package.json` (resuelto 2026-06-23): eliminado; la aprobación de builds la cubre `pnpm-workspace.yaml`.
 
 ### Tests (2026-06-23)
 - [x] Montado Vitest 4 + happy-dom. Scripts `test`/`test:run`, `vitest.config.ts` (alias `@`). Geometría del scroll extraída a `src/lib/credit/scroll.ts` (puro) y usada en `ScrollCredits.tsx`. 34 tests verdes en `scroll.test.ts`, `store.test.ts` (helpers + reducers + roundtrip import/export), `fonts.test.ts`. UI/FFmpeg/drag&drop fuera del alcance unit.
 
 ### Investigar / features pendientes (pedidos 2026-06-22)
-- [ ] Tiempos personalizados por título (duración individual de cada item). `CreditItem` no tiene campo de tiempo.
+- [~] Tiempos personalizados por título. Implementado 2026-06-23 para modo appearing: campo opcional `pauseOverride` en `CreditItem` que sobreescribe la pausa (hold) por item; la duración de animación sigue global. Pendiente: equivalente en modo scroll (no abordado por decisión de alcance).
 - [x] Velocidad de scroll: slider `scrollSpeed` (10-300 px/s) operativo en `ConfigPanel` y aplicado en `ScrollCredits`. Verificado 2026-06-23.
 - [x] Fuentes personalizadas: `FontManager` completo (catálogo Google Fonts, subida ttf/otf/woff con `@font-face`, activar/eliminar). Verificado 2026-06-23.
 - [x] Modo oscuro: implementado 2026-06-23. `next-themes` con `ThemeProvider` (`attribute="class"`, `defaultTheme="system"`) en `layout.tsx`, toggle sol/luna (`theme-toggle.tsx`) en el header. Tematiza la UI del editor; el fondo del escenario sigue siendo configurable aparte.
+- [ ] Modo appearing: los círculos indicadores de progreso (puntos en la parte inferior, bloque "Progress indicator" de `AppearingCredits.tsx`) se ven durante el pase de diapositivas. Decidir si ocultarlos (al menos en el vídeo exportado) o hacerlos opcionales.
 - [ ] Presets propios del usuario: actualmente solo presets fijos en `PresetBar`. No hay guardar/cargar propios.
 - [ ] Línea de tiempo (timeline) para navegación mientras se editan los créditos. No existe.
 - [ ] Control de los tiempos de fade.
