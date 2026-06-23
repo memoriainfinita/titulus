@@ -23,7 +23,7 @@ import {
   Type as TypeIcon,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment } from "@/lib/credit/types"
+import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle } from "@/lib/credit/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -114,8 +114,12 @@ function ItemRow({ item, index, isSelected, onSelect }: {
             )}
           </div>
           {item.type === "spacer" || item.type === "divider" ? (
-            <p className="text-xs text-muted-foreground italic">
+            <p className={cn(
+              "text-xs italic",
+              config.mode === "appearing" ? "text-muted-foreground/50" : "text-muted-foreground",
+            )}>
               {item.type === "spacer" ? "(espacio en blanco)" : "(línea separadora)"}
+              {config.mode === "appearing" && " — no se aplica en aparición"}
             </p>
           ) : (
             <p className="text-sm truncate">{item.text || <span className="text-muted-foreground italic">(vacío)</span>}</p>
@@ -282,6 +286,111 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               <span className="text-[10px] text-muted-foreground">vacío = global</span>
             </div>
           )}
+        </div>
+      )}
+
+      {isSelected && item.type === "spacer" && (
+        <div className="border-t px-2 py-2 space-y-2 bg-muted/30" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Alto (px)</span>
+            <Input
+              type="number"
+              min={0}
+              step={4}
+              value={item.spacerHeight ?? ""}
+              placeholder={String(config.spacerHeight)}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw === "") { updateItem(item.id, { spacerHeight: undefined }); return }
+                const n = Number(raw)
+                if (Number.isNaN(n)) return
+                updateItem(item.id, { spacerHeight: Math.max(0, n) })
+              }}
+              className="h-7 w-24 text-sm"
+            />
+            <span className="text-[10px] text-muted-foreground">vacío = global</span>
+          </div>
+        </div>
+      )}
+
+      {isSelected && item.type === "divider" && (
+        <div className="border-t px-2 py-2 space-y-2 bg-muted/30" onClick={(e) => e.stopPropagation()}>
+          <div className="grid grid-cols-3 gap-2">
+            <label className="space-y-1">
+              <span className="text-[10px] text-muted-foreground">Grosor</span>
+              <Input
+                type="number" min={0} step={1}
+                value={item.dividerThickness ?? ""}
+                placeholder={String(config.dividerThickness)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { dividerThickness: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { dividerThickness: Math.max(0, n) })
+                }}
+                className="h-7 text-sm"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[10px] text-muted-foreground">Ancho %</span>
+              <Input
+                type="number" min={0} max={100} step={1}
+                value={item.dividerWidth ?? ""}
+                placeholder={String(config.dividerWidth)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { dividerWidth: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { dividerWidth: Math.max(0, Math.min(100, n)) })
+                }}
+                className="h-7 text-sm"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[10px] text-muted-foreground">Opacidad</span>
+              <Input
+                type="number" min={0} max={1} step={0.05}
+                value={item.dividerOpacity ?? ""}
+                placeholder={String(config.dividerOpacity)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { dividerOpacity: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { dividerOpacity: Math.max(0, Math.min(1, n)) })
+                }}
+                className="h-7 text-sm"
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">Estilo</span>
+            <Select
+              value={item.dividerStyle ?? "__global"}
+              onValueChange={(v) =>
+                updateItem(item.id, { dividerStyle: v === "__global" ? undefined : (v as DividerStyle) })
+              }
+            >
+              <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__global">(global)</SelectItem>
+                <SelectItem value="solid">Sólida</SelectItem>
+                <SelectItem value="dashed">Discontinua</SelectItem>
+                <SelectItem value="dotted">Punteada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">Color</span>
+            <Input
+              value={item.dividerColor ?? ""}
+              placeholder="vacío = global / texto"
+              onChange={(e) => {
+                const raw = e.target.value
+                updateItem(item.id, { dividerColor: raw === "" ? undefined : raw })
+              }}
+              className="h-7 flex-1 font-mono text-xs"
+            />
+          </div>
         </div>
       )}
     </div>
