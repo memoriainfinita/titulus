@@ -46,6 +46,12 @@ export interface CreditItem {
   dividerOpacity?: number // 0-1
   dividerStyle?: DividerStyle
   dividerColor?: string // vacío/undefined = hereda config.textColor
+  // Text overrides. undefined/vacío = hereda el global correspondiente.
+  fontSize?: number // px; <= 0 se ignora
+  color?: string // vacío = hereda config.textColor
+  fontFamily?: string // vacío = hereda config.fontFamily
+  letterSpacing?: number // px; admite 0 y negativos
+  lineHeight?: number // <= 0 se ignora
 }
 
 export interface FontItem {
