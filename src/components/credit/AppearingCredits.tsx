@@ -3,10 +3,11 @@
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
-import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
+import { getFontWeight, resolveAlignment } from "@/lib/credit/store"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
+import { resolveTextStyle } from "@/lib/credit/textStyle"
 
 interface AppearingCreditsProps {
   items: CreditItem[]
@@ -111,19 +112,19 @@ function tunablesFromConfig(config: CreditConfig): AnimationTunables {
 
 function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }) {
   const align = resolveAlignment(item, config)
-  const fontSize = getFontSize(item.type, config)
+  const ts = resolveTextStyle(item, config)
   const fontWeight = item.bold ? 700 : getFontWeight(item.type, config.fontWeight)
   const shadow = resolveTextShadow(config)
   const blur = resolveTextBlur(item, config)
   return (
     <div
       style={{
-        fontFamily: config.fontFamily,
-        fontSize: `${fontSize}px`,
+        fontFamily: ts.fontFamily,
+        fontSize: `${ts.fontSize}px`,
         fontWeight,
-        color: config.textColor,
-        letterSpacing: `${config.letterSpacing}px`,
-        lineHeight: config.lineHeight,
+        color: ts.color,
+        letterSpacing: `${ts.letterSpacing}px`,
+        lineHeight: ts.lineHeight,
         textAlign: align,
         textShadow: shadow,
         filter: blur > 0 ? `blur(${blur}px)` : undefined,
@@ -335,14 +336,14 @@ export function AppearingCredits({
           {config.animationType === "typewriter" ? (
             <div
               style={{
-                fontFamily: config.fontFamily,
-                fontSize: `${getFontSize(currentItem.type, config)}px`,
+                fontFamily: resolveTextStyle(currentItem, config).fontFamily,
+                fontSize: `${resolveTextStyle(currentItem, config).fontSize}px`,
                 fontWeight: currentItem.bold
                   ? 700
                   : getFontWeight(currentItem.type, config.fontWeight),
-                color: config.textColor,
-                letterSpacing: `${config.letterSpacing}px`,
-                lineHeight: config.lineHeight,
+                color: resolveTextStyle(currentItem, config).color,
+                letterSpacing: `${resolveTextStyle(currentItem, config).letterSpacing}px`,
+                lineHeight: resolveTextStyle(currentItem, config).lineHeight,
                 textAlign: resolveAlignment(currentItem, config),
                 textTransform: currentItem.uppercase ? "uppercase" : undefined,
                 fontStyle: currentItem.italic ? "italic" : undefined,

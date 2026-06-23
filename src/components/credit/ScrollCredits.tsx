@@ -3,11 +3,12 @@
 import * as React from "react"
 import { motion } from "framer-motion"
 import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
-import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
+import { getFontWeight, resolveAlignment } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
+import { resolveTextStyle } from "@/lib/credit/textStyle"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -24,19 +25,19 @@ interface ScrollCreditsProps {
 // Build the inline style for an individual credit item
 function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperties {
   const align = resolveAlignment(item, config)
-  const fontSize = getFontSize(item.type, config)
+  const ts = resolveTextStyle(item, config)
   const fontWeight = getFontWeight(item.type, config.fontWeight)
 
   const shadow = resolveTextShadow(config)
   const blur = resolveTextBlur(item, config)
 
   return {
-    fontFamily: config.fontFamily,
-    fontSize: `${fontSize}px`,
+    fontFamily: ts.fontFamily,
+    fontSize: `${ts.fontSize}px`,
     fontWeight,
-    color: config.textColor,
-    letterSpacing: `${config.letterSpacing}px`,
-    lineHeight: config.lineHeight,
+    color: ts.color,
+    letterSpacing: `${ts.letterSpacing}px`,
+    lineHeight: ts.lineHeight,
     textAlign: align,
     textShadow: shadow,
     filter: blur > 0 ? `blur(${blur}px)` : undefined,
