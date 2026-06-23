@@ -10,6 +10,9 @@ export interface ExportOptions {
   fps: number
   width: number
   height: number
+  // Raster scale multiplier applied at capture time (1 = stage resolution).
+  // The logical width/height stay the same so text layout is unchanged.
+  pixelRatio: number
   format: "mp4" | "webm"
   quality: "fast" | "balanced" | "high"
   // Estimated duration in seconds
@@ -228,7 +231,7 @@ export function useVideoExport() {
               width: options.width,
               height: options.height,
               cacheBust: true,
-              pixelRatio: 1,
+              pixelRatio: options.pixelRatio,
               // Provide embedded fonts CSS to avoid CORS issues with Google Fonts CDN.
               // When provided, html-to-image skips its own (CORS-blocked) font collection.
               fontEmbedCSS: fontEmbedCSS || undefined,
@@ -286,6 +289,10 @@ export function useVideoExport() {
                 "frame_%05d.png",
                 "-c:v",
                 codec,
+                // Force even dimensions (required by yuv420p / H.264) in case the
+                // scale multiplier produced an odd width or height.
+                "-vf",
+                "scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 pixFmt,
                 pixVal,
                 "-preset",

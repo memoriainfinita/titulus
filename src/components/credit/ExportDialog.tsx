@@ -26,7 +26,25 @@ import {
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { useVideoExport, ExportProgress } from "@/lib/credit/useVideoExport"
+import { formatElapsed, estimateRemainingSeconds } from "@/lib/credit/exportTiming"
 import { toast } from "sonner"
+
+// File System Access API — not yet in the TS DOM lib in all setups.
+type SaveFilePicker = (opts?: {
+  suggestedName?: string
+  types?: { description?: string; accept: Record<string, string[]> }[]
+}) => Promise<FileSystemFileHandle>
+
+function triggerDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 interface ExportDialogProps {
   open: boolean
@@ -80,9 +98,14 @@ export function ExportDialog({
   const { items, config, projectName } = useCreditStore()
   const { isExporting, progress, exportVideo, cancelExport, reset } = useVideoExport()
   const [fps, setFps] = React.useState(30)
+  const [scale, setScale] = React.useState(1)
   const [quality, setQuality] = React.useState<"fast" | "balanced" | "high">("balanced")
   const [format, setFormat] = React.useState<"mp4" | "webm">("mp4")
   const [resultBlob, setResultBlob] = React.useState<Blob | null>(null)
+  const [elapsedMs, setElapsedMs] = React.useState(0)
+  const [savedToFile, setSavedToFile] = React.useState(false)
+  const startTimeRef = React.useRef<number | null>(null)
+  const fileHandleRef = React.useRef<FileSystemFileHandle | null>(null)
 
   // Reset on close
   React.useEffect(() => {
@@ -90,20 +113,72 @@ export function ExportDialog({
       const timer = setTimeout(() => {
         reset()
         setResultBlob(null)
+        setElapsedMs(0)
+        setSavedToFile(false)
+        startTimeRef.current = null
+        fileHandleRef.current = null
       }, 300)
       return () => clearTimeout(timer)
     }
   }, [open, reset])
 
+  // Live elapsed timer while exporting
+  React.useEffect(() => {
+    if (!isExporting) return
+    const id = setInterval(() => {
+      if (startTimeRef.current != null) {
+        setElapsedMs(performance.now() - startTimeRef.current)
+      }
+    }, 250)
+    return () => clearInterval(id)
+  }, [isExporting])
+
   const totalFrames = Math.max(1, Math.ceil(duration * fps))
-  const estimatedSizeMB = ((config.stageWidth * config.stageHeight * fps * duration * 0.05) / 1024 / 1024).toFixed(1)
+  const evenDim = (n: number) => Math.round(n / 2) * 2
+  const outWidth = evenDim(config.stageWidth * scale)
+  const outHeight = evenDim(config.stageHeight * scale)
+  const SCALE_PRESETS = [1, 1.5, 2, 3]
+  const showEta = progress.phase === "capturing" || progress.phase === "encoding"
+  const etaSeconds = showEta ? estimateRemainingSeconds(elapsedMs, progress.overallProgress) : null
 
   const handleExport = async () => {
     if (!stageRef.current) {
       toast.error("No se encontró el escenario de exportación")
       return
     }
+
+    const safeName = projectName.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "creditos"
+    const fileName = `${safeName}.${format}`
+
+    // Choose the save destination up-front, while we still have the user gesture.
+    // (showSaveFilePicker must be called from a user activation, not after the
+    // long encode finishes.) Falls back to an automatic download when the API
+    // is unavailable.
+    fileHandleRef.current = null
+    const picker = (window as unknown as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker
+    if (picker) {
+      try {
+        fileHandleRef.current = await picker({
+          suggestedName: fileName,
+          types: [
+            {
+              description: format === "mp4" ? "Video MP4" : "Video WebM",
+              accept: { [format === "mp4" ? "video/mp4" : "video/webm"]: [`.${format}`] },
+            },
+          ],
+        })
+      } catch (err) {
+        // User dismissed the picker -> abort the export silently.
+        if (err instanceof DOMException && err.name === "AbortError") return
+        // Any other failure -> fall back to auto-download.
+        fileHandleRef.current = null
+      }
+    }
+
     setResultBlob(null)
+    setSavedToFile(false)
+    setElapsedMs(0)
+    startTimeRef.current = performance.now()
     try {
       const blob = await exportVideo(
         stageRef.current,
@@ -114,6 +189,7 @@ export function ExportDialog({
           fps,
           width: config.stageWidth,
           height: config.stageHeight,
+          pixelRatio: scale,
           format,
           quality,
           duration,
@@ -122,21 +198,31 @@ export function ExportDialog({
       )
       if (blob) {
         setResultBlob(blob)
-        // Auto-trigger download
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        const safeName = projectName.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "creditos"
-        a.download = `${safeName}.${format}`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        toast.success(`Video exportado (${formatBytes(blob.size)})`)
+        const handle = fileHandleRef.current
+        if (handle) {
+          try {
+            const writable = await handle.createWritable()
+            await writable.write(blob)
+            await writable.close()
+            setSavedToFile(true)
+            toast.success(`Guardado: ${handle.name} (${formatBytes(blob.size)})`)
+          } catch (err) {
+            console.error("[export-dialog] Save to file failed, falling back to download:", err)
+            triggerDownload(blob, fileName)
+            toast.success(`Video exportado (${formatBytes(blob.size)})`)
+          }
+        } else {
+          triggerDownload(blob, fileName)
+          toast.success(`Video exportado (${formatBytes(blob.size)})`)
+        }
       }
     } catch (err) {
       console.error("[export-dialog] Export error:", err)
       toast.error("Error en la exportación: " + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      if (startTimeRef.current != null) {
+        setElapsedMs(performance.now() - startTimeRef.current)
+      }
     }
   }
 
@@ -173,7 +259,7 @@ export function ExportDialog({
 
         <div className="space-y-4">
           {/* Video info summary */}
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid grid-cols-3 gap-2 text-sm">
             <div className="bg-muted/40 rounded-md p-2.5">
               <div className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
                 <Clock className="h-3 w-3" /> Duración
@@ -185,16 +271,12 @@ export function ExportDialog({
                 <Settings2 className="h-3 w-3" /> Resolución
               </div>
               <div className="font-medium">
-                {config.stageWidth}×{config.stageHeight}
+                {outWidth}×{outHeight}
               </div>
             </div>
             <div className="bg-muted/40 rounded-md p-2.5">
               <div className="text-xs text-muted-foreground mb-0.5">Frames totales</div>
               <div className="font-medium">{totalFrames.toLocaleString()}</div>
-            </div>
-            <div className="bg-muted/40 rounded-md p-2.5">
-              <div className="text-xs text-muted-foreground mb-0.5">Tamaño aprox.</div>
-              <div className="font-medium">~{estimatedSizeMB} MB</div>
             </div>
           </div>
 
@@ -245,6 +327,34 @@ export function ExportDialog({
                     </div>
                   ))}
                 </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Resolución</Label>
+                <RadioGroup
+                  value={String(scale)}
+                  onValueChange={(v) => setScale(Number(v))}
+                  className="grid grid-cols-4 gap-2"
+                >
+                  {SCALE_PRESETS.map((s) => (
+                    <div key={s} className="flex flex-col space-y-0.5 border rounded-md p-2 cursor-pointer hover:bg-accent/40">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value={String(s)} id={`scale-${s}`} />
+                        <Label htmlFor={`scale-${s}`} className="cursor-pointer text-sm font-medium">
+                          ×{s}
+                        </Label>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground ml-6 leading-tight">
+                        {evenDim(config.stageWidth * s)}×{evenDim(config.stageHeight * s)}
+                      </span>
+                    </div>
+                  ))}
+                </RadioGroup>
+                {scale > 1 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Más resolución = exportación más lenta (≈ ×{(scale * scale).toFixed(scale === 1.5 ? 2 : 0)} de píxeles).
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -337,11 +447,12 @@ export function ExportDialog({
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{(progress.overallProgress * 100).toFixed(0)}%</span>
-                {progress.phase === "capturing" && progress.totalFrames > 0 && (
-                  <span>
-                    {((progress.currentFrame / Math.max(1, progress.totalFrames)) * 100).toFixed(0)}% capturado
-                  </span>
-                )}
+                <span className="font-mono">
+                  {formatElapsed(elapsedMs)}
+                  {etaSeconds != null && (
+                    <> · restante ~{formatElapsed(etaSeconds * 1000)}</>
+                  )}
+                </span>
               </div>
 
               {progress.phase === "error" && (
@@ -353,7 +464,10 @@ export function ExportDialog({
               {progress.phase === "done" && (
                 <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3 dark:bg-emerald-950/30 dark:border-emerald-900">
                   <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                    Video exportado correctamente. Se ha descargado automáticamente.
+                    Video exportado en {formatElapsed(elapsedMs)}.{" "}
+                    {savedToFile
+                      ? "Guardado en la ubicación que elegiste."
+                      : "Se ha descargado automáticamente."}
                   </p>
                 </div>
               )}
@@ -379,13 +493,8 @@ export function ExportDialog({
                 {progress.phase === "done" && resultBlob && (
                   <Button
                     onClick={() => {
-                      const url = URL.createObjectURL(resultBlob)
-                      const a = document.createElement("a")
-                      a.href = url
                       const safeName = projectName.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "creditos"
-                      a.download = `${safeName}.${format}`
-                      a.click()
-                      URL.revokeObjectURL(url)
+                      triggerDownload(resultBlob, `${safeName}.${format}`)
                     }}
                     className="flex-1"
                   >
