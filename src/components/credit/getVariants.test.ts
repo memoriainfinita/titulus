@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { getVariants, AnimationTunables } from "./AppearingCredits"
+import { getVariants } from "./AppearingCredits"
+import { AnimationTunables } from "@/lib/credit/appearing"
 
 const t: AnimationTunables = { slide: 80, blur: 20, zoomFrom: 0.6, zoomTo: 1.4 }
 

@@ -4,9 +4,10 @@ import {
   getFontSize,
   getFontWeight,
   resolveAlignment,
+  resolveFontWeight,
   mergePersistedConfig,
 } from "./store"
-import { CreditItem, DEFAULT_CONFIG } from "./types"
+import { CreditItem, CreditConfig, DEFAULT_CONFIG } from "./types"
 
 const baseItems: CreditItem[] = [
   { id: "a", type: "title", text: "A" },
@@ -237,5 +238,26 @@ describe("mergePersistedConfig", () => {
 
   it("returns full defaults when given undefined", () => {
     expect(mergePersistedConfig(undefined)).toEqual(DEFAULT_CONFIG)
+  })
+})
+
+describe("resolveFontWeight", () => {
+  const cfg: CreditConfig = { ...DEFAULT_CONFIG, fontWeight: 400 }
+
+  it("uses the type-derived global weight by default", () => {
+    // name -> baseWeight + 100
+    expect(resolveFontWeight({ id: "n", type: "name", text: "" }, cfg)).toBe(500)
+  })
+
+  it("forces 700 when bold and no explicit weight", () => {
+    expect(resolveFontWeight({ id: "n", type: "name", text: "", bold: true }, cfg)).toBe(700)
+  })
+
+  it("an explicit per-item weight wins over bold", () => {
+    expect(resolveFontWeight({ id: "n", type: "name", text: "", bold: true, fontWeight: 300 }, cfg)).toBe(300)
+  })
+
+  it("ignores a non-positive explicit weight", () => {
+    expect(resolveFontWeight({ id: "n", type: "name", text: "", fontWeight: 0 }, cfg)).toBe(500)
   })
 })

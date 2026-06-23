@@ -53,6 +53,14 @@ export interface CreditItem {
   fontFamily?: string // vacío = hereda config.fontFamily
   letterSpacing?: number // px; admite 0 y negativos
   lineHeight?: number // <= 0 se ignora
+  fontWeight?: number // 100-900; <= 0 se ignora. Tiene prioridad sobre `bold`.
+  // Animation overrides (modo aparición). undefined = hereda el config.* correspondiente.
+  animationType?: AnimationType
+  animationDuration?: number // s; <= 0 se ignora
+  animSlideDistance?: number // px; admite 0 y negativos
+  animBlurAmount?: number // px; admite 0
+  animZoomFrom?: number
+  animZoomTo?: number
   // Image (logo) item.
   imageSrc?: string // data URL
   imageWidth?: number // % del ancho del escenario; undefined = hereda config.imageWidth
@@ -131,6 +139,8 @@ export interface CreditConfig {
   stageWidth: number // 16, 21, 9, etc.
   stageHeight: number
   stageRatio: "16:9" | "21:9" | "4:3" | "9:16" | "1:1"
+  // Preview guides (never exported into the video)
+  showSafeMargins: boolean // title-safe / action-safe overlay in the editor preview
 }
 
 export interface CreditProject {
@@ -195,6 +205,7 @@ export const DEFAULT_CONFIG: CreditConfig = {
   stageWidth: 1280,
   stageHeight: 720,
   stageRatio: "16:9",
+  showSafeMargins: false,
 }
 
 export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {

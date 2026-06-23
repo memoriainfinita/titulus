@@ -12,7 +12,31 @@ import {
   Eye,
   Video,
   Repeat,
+  SquareDashedBottom,
 } from "lucide-react"
+
+// Broadcast-style guide margins, as a fraction of the stage inset on each edge.
+const ACTION_SAFE_INSET = 0.05 // 90% box
+const TITLE_SAFE_INSET = 0.1 // 80% box
+
+function SafeMarginsOverlay() {
+  const box = (inset: number): React.CSSProperties => ({
+    position: "absolute",
+    top: `${inset * 100}%`,
+    left: `${inset * 100}%`,
+    right: `${inset * 100}%`,
+    bottom: `${inset * 100}%`,
+    border: "1px dashed rgba(255,255,255,0.6)",
+    boxShadow: "0 0 0 1px rgba(0,0,0,0.35)",
+    pointerEvents: "none",
+  })
+  return (
+    <div className="absolute inset-0 z-20 pointer-events-none" aria-hidden>
+      <div style={box(ACTION_SAFE_INSET)} />
+      <div style={box(TITLE_SAFE_INSET)} />
+    </div>
+  )
+}
 import { useCreditStore } from "@/lib/credit/store"
 import { ScrollCredits } from "./ScrollCredits"
 import { AppearingCredits } from "./AppearingCredits"
@@ -197,6 +221,7 @@ export function CreditPreview() {
               restartKey={previewKey}
             />
           )}
+          {config.showSafeMargins && <SafeMarginsOverlay />}
         </div>
       </div>
 
@@ -222,6 +247,15 @@ export function CreditPreview() {
         >
           <Repeat className="h-4 w-4 mr-1" />
           Bucle
+        </Button>
+        <Button
+          size="sm"
+          variant={config.showSafeMargins ? "default" : "outline"}
+          onClick={() => updateConfig({ showSafeMargins: !config.showSafeMargins })}
+          title="Mostrar márgenes seguros (guía, no se exporta)"
+        >
+          <SquareDashedBottom className="h-4 w-4 mr-1" />
+          Márgenes
         </Button>
         <Button size="sm" variant="outline" onClick={toggleFullscreen}>
           {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}

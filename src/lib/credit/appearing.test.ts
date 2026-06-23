@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { getAppearItemDuration } from "./appearing"
+import {
+  getAppearItemDuration,
+  resolveAnimationType,
+  resolveAnimationDuration,
+  resolveAnimationTunables,
+} from "./appearing"
 import { DEFAULT_CONFIG, CreditItem, CreditConfig } from "./types"
 
 function makeConfig(patch: Partial<CreditConfig> = {}): CreditConfig {
@@ -54,5 +59,58 @@ describe("getAppearItemDuration (typewriter)", () => {
   it("scales typing time with long text", () => {
     const text = "x".repeat(100) // 100 * 0.05 = 5
     expect(getAppearItemDuration(makeItem({ text, pauseOverride: 0 }), config)).toBe(5)
+  })
+})
+
+describe("per-item animation resolvers", () => {
+  const config = makeConfig({
+    animationType: "fade",
+    animationDuration: 1.5,
+    animSlideDistance: 80,
+    animBlurAmount: 20,
+    animZoomFrom: 0.6,
+    animZoomTo: 1.4,
+  })
+
+  it("resolveAnimationType inherits the global type by default", () => {
+    expect(resolveAnimationType(makeItem(), config)).toBe("fade")
+  })
+
+  it("resolveAnimationType uses the per-item override", () => {
+    expect(resolveAnimationType(makeItem({ animationType: "zoom" }), config)).toBe("zoom")
+  })
+
+  it("resolveAnimationDuration inherits the global value, then overrides when > 0", () => {
+    expect(resolveAnimationDuration(makeItem(), config)).toBe(1.5)
+    expect(resolveAnimationDuration(makeItem({ animationDuration: 3 }), config)).toBe(3)
+  })
+
+  it("resolveAnimationDuration ignores a non-positive override", () => {
+    expect(resolveAnimationDuration(makeItem({ animationDuration: 0 }), config)).toBe(1.5)
+  })
+
+  it("resolveAnimationTunables falls back per field but allows 0/negatives", () => {
+    expect(resolveAnimationTunables(makeItem(), config)).toEqual({
+      slide: 80,
+      blur: 20,
+      zoomFrom: 0.6,
+      zoomTo: 1.4,
+    })
+    const overridden = resolveAnimationTunables(
+      makeItem({ animSlideDistance: 0, animBlurAmount: 5 }),
+      config,
+    )
+    expect(overridden.slide).toBe(0)
+    expect(overridden.blur).toBe(5)
+    expect(overridden.zoomFrom).toBe(0.6)
+  })
+
+  it("getAppearItemDuration honors a per-item animation type and duration", () => {
+    // Item forces typewriter even though global is fade -> typing time, not duration
+    const tw = getAppearItemDuration(makeItem({ text: "Hola", animationType: "typewriter", pauseOverride: 0 }), config)
+    expect(tw).toBe(2)
+    // Item overrides the duration of a fade
+    const faded = getAppearItemDuration(makeItem({ animationDuration: 4, pauseOverride: 0 }), config)
+    expect(faded).toBe(4)
   })
 })

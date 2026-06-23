@@ -3,7 +3,7 @@
 import * as React from "react"
 import { motion } from "framer-motion"
 import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
-import { getFontWeight, resolveAlignment } from "@/lib/credit/store"
+import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -27,7 +27,7 @@ interface ScrollCreditsProps {
 function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperties {
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
-  const fontWeight = getFontWeight(item.type, config.fontWeight)
+  const fontWeight = resolveFontWeight(item, config)
 
   const shadow = resolveTextShadow(config)
   const blur = resolveTextBlur(item, config)
@@ -112,7 +112,6 @@ function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }
         ...getItemStyle(item, config),
         marginTop: `${config.itemSpacing}px`,
         marginBottom: `${config.itemSpacing}px`,
-        fontWeight: item.bold ? 700 : getFontWeight(item.type, config.fontWeight),
       }}
     >
       {item.text || "\u00A0"}
