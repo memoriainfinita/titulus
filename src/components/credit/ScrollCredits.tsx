@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
 import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY } from "@/lib/credit/scroll"
+import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -51,10 +52,11 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
 // Render a single item, including dividers and spacers
 function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }) {
   if (item.type === "spacer") {
-    return <div style={{ height: `${config.itemSpacing * 2}px` }} aria-hidden />
+    return <div style={{ height: `${resolveSpacerHeight(item, config)}px` }} aria-hidden />
   }
   if (item.type === "divider") {
     const align = resolveAlignment(item, config)
+    const d = resolveDivider(item, config)
     return (
       <div
         style={{
@@ -68,10 +70,11 @@ function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }
       >
         <div
           style={{
-            width: "60%",
-            height: "1px",
-            background: config.textColor,
-            opacity: 0.4,
+            width: `${d.width}%`,
+            borderTopWidth: `${d.thickness}px`,
+            borderTopStyle: d.style,
+            borderTopColor: d.color,
+            opacity: d.opacity,
           }}
         />
       </div>
