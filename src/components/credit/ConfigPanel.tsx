@@ -16,7 +16,7 @@ import {
   ArrowDown,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { CreditConfig, AnimationType, CreditMode, Alignment } from "@/lib/credit/types"
+import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle } from "@/lib/credit/types"
 import { DEFAULT_CONFIG } from "@/lib/credit/types"
 import { FontManager } from "./FontManager"
 import { Button } from "@/components/ui/button"
@@ -447,6 +447,74 @@ export function ConfigPanel() {
                 step={5}
               />
             </Field>
+            <Separator />
+            <Field label="Alto del espacio" hint={`${config.spacerHeight}px`}>
+              <Slider
+                value={[config.spacerHeight]}
+                onValueChange={(v) => updateConfig({ spacerHeight: v[0] })}
+                min={0}
+                max={300}
+                step={2}
+              />
+            </Field>
+            <Field label="Grosor del separador" hint={`${config.dividerThickness}px`}>
+              <Slider
+                value={[config.dividerThickness]}
+                onValueChange={(v) => updateConfig({ dividerThickness: v[0] })}
+                min={0}
+                max={20}
+                step={1}
+              />
+            </Field>
+            <Field label="Ancho del separador" hint={`${config.dividerWidth}%`}>
+              <Slider
+                value={[config.dividerWidth]}
+                onValueChange={(v) => updateConfig({ dividerWidth: v[0] })}
+                min={0}
+                max={100}
+                step={1}
+              />
+            </Field>
+            <Field label="Opacidad del separador" hint={`${config.dividerOpacity.toFixed(2)}`}>
+              <Slider
+                value={[config.dividerOpacity * 100]}
+                onValueChange={(v) => updateConfig({ dividerOpacity: v[0] / 100 })}
+                min={0}
+                max={100}
+                step={5}
+              />
+            </Field>
+            <Field label="Estilo del separador">
+              <Select
+                value={config.dividerStyle}
+                onValueChange={(v) => updateConfig({ dividerStyle: v as DividerStyle })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solid">Sólida</SelectItem>
+                  <SelectItem value="dashed">Discontinua</SelectItem>
+                  <SelectItem value="dotted">Punteada</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Heredar color del texto</Label>
+              <Switch
+                checked={config.dividerColor.trim() === ""}
+                onCheckedChange={(on) =>
+                  updateConfig({ dividerColor: on ? "" : (config.textColor || "#ffffff") })
+                }
+              />
+            </div>
+            {config.dividerColor.trim() !== "" && (
+              <Field label="Color del separador">
+                <ColorInput
+                  value={config.dividerColor}
+                  onChange={(v) => updateConfig({ dividerColor: v })}
+                  label="Separador"
+                />
+              </Field>
+            )}
           </Section>
 
           {/* MODE-SPECIFIC */}
