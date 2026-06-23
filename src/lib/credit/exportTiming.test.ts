@@ -28,6 +28,10 @@ describe("estimateRemainingSeconds", () => {
     expect(estimateRemainingSeconds(2000, 0.02)).toBeNull()
   })
 
+  it("returns a number once a little past the floor", () => {
+    expect(estimateRemainingSeconds(2000, 0.04)).toBeGreaterThan(0)
+  })
+
   it("returns null with no elapsed time", () => {
     expect(estimateRemainingSeconds(0, 0.5)).toBeNull()
   })

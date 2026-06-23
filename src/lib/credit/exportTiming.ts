@@ -24,8 +24,10 @@ export function estimateRemainingSeconds(
 ): number | null {
   if (!Number.isFinite(elapsedMs) || !Number.isFinite(overallProgress)) return null
   if (elapsedMs <= 0) return null
-  // Below this, the extrapolation is too noisy to be useful.
-  if (overallProgress <= 0.06) return null
+  // Below this, the extrapolation is too noisy to be useful. The caller feeds a
+  // phase-local, roughly linear progress (e.g. frames captured), so a low floor
+  // is fine.
+  if (overallProgress <= 0.02) return null
   if (overallProgress >= 1) return 0
   const elapsedSeconds = elapsedMs / 1000
   const remaining = elapsedSeconds * (1 - overallProgress) / overallProgress
