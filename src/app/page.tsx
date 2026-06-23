@@ -10,6 +10,7 @@ import { CreditEditor } from "@/components/credit/CreditEditor"
 import { CreditPreview } from "@/components/credit/CreditPreview"
 import { ConfigPanel, PresetBar } from "@/components/credit/ConfigPanel"
 import { FontLoader } from "@/components/credit/FontManager"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Film, Github, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,6 +39,7 @@ export default function Home() {
             <span className="text-xs text-muted-foreground">Presets:</span>
           </div>
           <PresetBar />
+          <ThemeToggle />
           <Badge variant="secondary" className="hidden sm:inline-flex text-xs">
             v1.0
           </Badge>
