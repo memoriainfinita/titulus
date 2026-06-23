@@ -299,8 +299,22 @@ por:
 
 - [ ] **Step 6: Verificar tipos**
 
+Tras los Steps 4-5, `getFontSize` ya no se usa en `AppearingCredits.tsx` (sus únicos usos eran las líneas 91 y 313, ambas reemplazadas). Quitarlo del import de la línea 6, que pasa de:
+
+```ts
+import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
+```
+
+a:
+
+```ts
+import { getFontWeight, resolveAlignment } from "@/lib/credit/store"
+```
+
+(`getFontWeight` y `resolveAlignment` siguen en uso.) El proyecto no tiene `noUnusedLocals`, así que `tsc` no falla por ello; se elimina por limpieza.
+
 Run: `pnpm exec tsc --noEmit`
-Expected: sin errores nuevos. (`getFontSize` puede quedar sin usar en `AppearingCredits` si ya no se referencia en otro punto; si `tsc`/lint lo marca, eliminar `getFontSize` del import de la línea 6. Comprobar con grep antes de quitarlo: sigue usándose en `getAppearItemDuration`? No — está en `appearing.ts`. En este archivo, tras el cambio, `getFontSize` ya no se usa: quitarlo del import.)
+Expected: sin errores nuevos.
 
 - [ ] **Step 7: Verificación manual en navegador**
 
@@ -336,7 +350,30 @@ En `ItemRow`, la línea `const { updateItem, removeItem, duplicateItem, moveItem
   const { updateItem, removeItem, duplicateItem, moveItem, items, config, fonts } = useCreditStore()
 ```
 
-- [ ] **Step 2: Añadir los controles de override** dentro del bloque de texto expandido, tras el bloque `config.mode === "appearing" && (...)` de la pausa (cierra justo antes del `</div>` que cierra ese panel, alrededor de la línea 285). Insertar:
+- [ ] **Step 2: Añadir los controles de override** dentro del bloque de texto expandido. El insert va entre el `)}` que cierra el bloque de la pausa y el `</div>` que cierra el panel de texto. Ancla exacta — reemplazar este fragmento (único por la línea del bloque spacer que lo sigue):
+
+```tsx
+            </div>
+          )}
+        </div>
+      )}
+
+      {isSelected && item.type === "spacer" && (
+```
+
+por (mismo fragmento con el bloque de controles insertado antes de `        </div>`):
+
+```tsx
+            </div>
+          )}
+          {/* OVERRIDE_BLOCK */}
+        </div>
+      )}
+
+      {isSelected && item.type === "spacer" && (
+```
+
+donde `{/* OVERRIDE_BLOCK */}` es:
 
 ```tsx
           <div className="border-t pt-2 space-y-2">
