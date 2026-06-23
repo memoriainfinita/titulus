@@ -4,6 +4,7 @@ import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
 import { getFontSize, getFontWeight, resolveAlignment } from "@/lib/credit/store"
+import { getAppearItemDuration } from "@/lib/credit/appearing"
 
 interface AppearingCreditsProps {
   items: CreditItem[]
@@ -131,13 +132,7 @@ export function AppearingCredits({
 
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
-    return visibleItems.map((item) => {
-      const text = item.text || ""
-      const isTypewriter = config.animationType === "typewriter"
-      return isTypewriter
-        ? Math.max(2, text.length * 0.05) + config.pauseDuration
-        : config.animationDuration + config.pauseDuration
-    })
+    return visibleItems.map((item) => getAppearItemDuration(item, config))
   }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration])
 
   const totalDuration = React.useMemo(
@@ -197,11 +192,7 @@ export function AppearingCredits({
       return
     }
     const item = visibleItems[currentIndex]
-    const itemText = item.text || ""
-    const isTypewriter = config.animationType === "typewriter"
-    const itemDuration = isTypewriter
-      ? Math.max(2, itemText.length * 0.05) + config.pauseDuration
-      : config.animationDuration + config.pauseDuration
+    const itemDuration = getAppearItemDuration(item, config)
 
     const t = setTimeout(() => {
       setCurrentIndex((i) => i + 1)

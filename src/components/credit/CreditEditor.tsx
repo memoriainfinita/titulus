@@ -76,7 +76,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   isSelected: boolean
   onSelect: () => void
 }) {
-  const { updateItem, removeItem, duplicateItem, moveItem, items } = useCreditStore()
+  const { updateItem, removeItem, duplicateItem, moveItem, items, config } = useCreditStore()
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
   const isLast = index === items.length - 1
@@ -109,6 +109,9 @@ function ItemRow({ item, index, isSelected, onSelect }: {
             {item.italic && <Badge variant="secondary" className="text-[10px] py-0 px-1">I</Badge>}
             {item.uppercase && <Badge variant="secondary" className="text-[10px] py-0 px-1">AA</Badge>}
             {item.align && <Badge variant="secondary" className="text-[10px] py-0 px-1">{item.align}</Badge>}
+            {config.mode === "appearing" && item.pauseOverride != null && (
+              <Badge variant="secondary" className="text-[10px] py-0 px-1">{item.pauseOverride}s</Badge>
+            )}
           </div>
           {item.type === "spacer" || item.type === "divider" ? (
             <p className="text-xs text-muted-foreground italic">
@@ -254,6 +257,31 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               <AlignRight className="h-3.5 w-3.5" />
             </Button>
           </div>
+          {config.mode === "appearing" && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Pausa (s)</span>
+              <Input
+                type="number"
+                min={0}
+                step={0.5}
+                value={item.pauseOverride ?? ""}
+                placeholder={String(config.pauseDuration)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") {
+                    updateItem(item.id, { pauseOverride: undefined })
+                    return
+                  }
+                  const n = Number(raw)
+                  if (Number.isNaN(n)) return
+                  updateItem(item.id, { pauseOverride: Math.max(0, n) })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
+              <span className="text-[10px] text-muted-foreground">vacío = global</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -129,6 +129,23 @@ describe("project import/export", () => {
     expect(useCreditStore.getState().items.map((i) => i.id)).toEqual(["a", "b", "c"])
   })
 
+  it("preserves a per-item pauseOverride through export then import", () => {
+    useCreditStore.setState({
+      items: [
+        { id: "a", type: "name", text: "A", pauseOverride: 4.5 },
+        { id: "b", type: "name", text: "B" },
+      ],
+    })
+    const json = useCreditStore.getState().exportProject()
+
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    useCreditStore.getState().importProject(json)
+
+    const { items } = useCreditStore.getState()
+    expect(items[0].pauseOverride).toBe(4.5)
+    expect(items[1].pauseOverride).toBeUndefined()
+  })
+
   it("rejects invalid JSON", () => {
     expect(useCreditStore.getState().importProject("{ not json")).toBe(false)
   })

@@ -31,6 +31,9 @@ export interface CreditItem {
   bold?: boolean
   italic?: boolean
   uppercase?: boolean
+  // Appearing mode only: overrides config.pauseDuration (hold time) for this item.
+  // undefined = inherit the global pause. Negative values are ignored.
+  pauseOverride?: number
 }
 
 export interface FontItem {
