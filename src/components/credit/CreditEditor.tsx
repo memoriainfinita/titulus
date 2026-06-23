@@ -23,6 +23,7 @@ import {
   Type as TypeIcon,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle } from "@/lib/credit/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -381,15 +382,34 @@ function ItemRow({ item, index, isSelected, onSelect }: {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground whitespace-nowrap">Color</span>
+            <div className="relative w-7 h-7 rounded-md border overflow-hidden shrink-0">
+              <input
+                type="color"
+                value={resolveDivider(item, config).color}
+                onChange={(e) => updateItem(item.id, { dividerColor: e.target.value })}
+                className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+              />
+              <div className="w-full h-full" style={{ backgroundColor: resolveDivider(item, config).color }} />
+            </div>
             <Input
               value={item.dividerColor ?? ""}
-              placeholder="vacío = global / texto"
+              placeholder="global"
               onChange={(e) => {
                 const raw = e.target.value
                 updateItem(item.id, { dividerColor: raw === "" ? undefined : raw })
               }}
               className="h-7 flex-1 font-mono text-xs"
             />
+            {item.dividerColor != null && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[10px]"
+                onClick={() => updateItem(item.id, { dividerColor: undefined })}
+              >
+                global
+              </Button>
+            )}
           </div>
         </div>
       )}
