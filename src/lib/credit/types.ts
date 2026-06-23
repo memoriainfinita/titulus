@@ -23,6 +23,8 @@ export type AnimationType =
   | "blur"
   | "typewriter"
 
+export type DividerStyle = "solid" | "dashed" | "dotted"
+
 export interface CreditItem {
   id: string
   type: CreditItemType
@@ -34,6 +36,14 @@ export interface CreditItem {
   // Appearing mode only: overrides config.pauseDuration (hold time) for this item.
   // undefined = inherit the global pause. Negative values are ignored.
   pauseOverride?: number
+  // Spacer override: alto en px. undefined = hereda config.spacerHeight.
+  spacerHeight?: number
+  // Divider overrides. undefined = hereda el config.divider* correspondiente.
+  dividerThickness?: number // px
+  dividerWidth?: number // % del ancho del escenario
+  dividerOpacity?: number // 0-1
+  dividerStyle?: DividerStyle
+  dividerColor?: string // vacío/undefined = hereda config.textColor
 }
 
 export interface FontItem {
@@ -69,6 +79,13 @@ export interface CreditConfig {
   alignment: Alignment
   itemSpacing: number
   paddingX: number
+  // Spacer / Divider
+  spacerHeight: number
+  dividerThickness: number
+  dividerWidth: number // percent
+  dividerOpacity: number // 0-1
+  dividerStyle: DividerStyle
+  dividerColor: string // empty = inherit textColor
   // Effects
   textShadow: string
   useTextShadow: boolean
@@ -122,6 +139,12 @@ export const DEFAULT_CONFIG: CreditConfig = {
   alignment: "center",
   itemSpacing: 24,
   paddingX: 80,
+  spacerHeight: 48,
+  dividerThickness: 1,
+  dividerWidth: 60,
+  dividerOpacity: 0.4,
+  dividerStyle: "solid",
+  dividerColor: "",
   textShadow: "0 2px 12px rgba(0,0,0,0.6)",
   useTextShadow: true,
   textShadowColor: "#000000",
