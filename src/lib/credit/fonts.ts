@@ -73,6 +73,47 @@ export const SYSTEM_FONTS: GoogleFont[] = [
   { family: "Trebuchet MS", category: "system", weights: ["400", "700"] },
 ]
 
+// Custom (uploaded) fonts live as a data URL in the persisted store, but their
+// @font-face rule only exists in the DOM. These helpers rebuild that rule so it
+// can be injected on upload and re-injected on every app load.
+
+// Stable <style> id for a custom font, derived from its name.
+export function fontFaceStyleId(name: string): string {
+  return `font-face-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
+}
+
+// Map a data URL's MIME type to a CSS @font-face format() hint.
+// Returns undefined when unknown (e.g. application/octet-stream); the browser
+// then sniffs the format, which still loads the font.
+export function fontFormatFromDataUrl(dataUrl: string): string | undefined {
+  const mime = /^data:([^;,]+)[;,]/.exec(dataUrl)?.[1]?.toLowerCase()
+  switch (mime) {
+    case "font/ttf":
+    case "font/truetype":
+    case "application/x-font-ttf":
+      return "truetype"
+    case "font/otf":
+    case "font/opentype":
+    case "application/x-font-otf":
+      return "opentype"
+    case "font/woff2":
+      return "woff2"
+    case "font/woff":
+      return "woff"
+    default:
+      return undefined
+  }
+}
+
+// Build a CSS @font-face rule for a custom font backed by a data URL.
+// `family` is the CSS font-family value (already quoted, e.g. "'My Font'").
+// The url is quoted to keep long base64 data URLs robust across browsers.
+export function buildFontFaceRule(family: string, dataUrl: string): string {
+  const fmt = fontFormatFromDataUrl(dataUrl)
+  const src = fmt ? `url("${dataUrl}") format('${fmt}')` : `url("${dataUrl}")`
+  return `@font-face { font-family: ${family}; src: ${src}; font-display: swap; }`
+}
+
 // Build the Google Fonts CSS URL for a given font family and weights
 export function buildGoogleFontUrl(family: string, weights: string[] = ["400", "700"]): string {
   const familyParam = family.replace(/ /g, "+")

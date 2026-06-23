@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Plus, Trash2, Upload, Search, Type } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl } from "@/lib/credit/fonts"
+import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl, buildFontFaceRule, fontFaceStyleId } from "@/lib/credit/fonts"
 import { FontItem } from "@/lib/credit/types"
 import {
   Dialog,
@@ -104,21 +104,6 @@ export function FontManager() {
         reader.readAsDataURL(file)
       })
       const familyName = file.name.replace(/\.(ttf|otf|woff|woff2)$/i, "")
-      // Inject @font-face rule
-      const styleId = `font-face-${familyName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
-      let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
-      if (!styleEl) {
-        styleEl = document.createElement("style")
-        styleEl.id = styleId
-        document.head.appendChild(styleEl)
-      }
-      styleEl.textContent = `
-        @font-face {
-          font-family: '${familyName}';
-          src: url(${dataUrl}) format('${file.name.match(/woff2$/i) ? "woff2" : file.name.match(/woff$/i) ? "woff" : file.name.match(/otf$/i) ? "opentype" : "truetype"}');
-          font-display: swap;
-        }
-      `
       const newFont: FontItem = {
         id: uuid(),
         name: familyName,
@@ -126,6 +111,16 @@ export function FontManager() {
         family: `'${familyName}'`,
         url: dataUrl,
       }
+      // Inject the @font-face rule. Same helper is used by FontLoader to
+      // re-inject it on every app load (the rule is not persisted, only font.url is).
+      const styleId = fontFaceStyleId(familyName)
+      let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
+      if (!styleEl) {
+        styleEl = document.createElement("style")
+        styleEl.id = styleId
+        document.head.appendChild(styleEl)
+      }
+      styleEl.textContent = buildFontFaceRule(newFont.family, dataUrl)
       addFont(newFont)
       toast.success(`Fuente "${familyName}" subida`)
     }
@@ -355,6 +350,19 @@ export function FontLoader() {
         document.head.appendChild(link)
       }
     })
+    // Re-inject @font-face for custom fonts: their rule lives only in the DOM,
+    // not in localStorage (only font.url is persisted), so it must be rebuilt
+    // on every load or the font won't render after a reload.
+    fonts
+      .filter((f) => f.source === "custom" && f.url)
+      .forEach((f) => {
+        const styleId = fontFaceStyleId(f.name)
+        if (document.getElementById(styleId)) return
+        const styleEl = document.createElement("style")
+        styleEl.id = styleId
+        styleEl.textContent = buildFontFaceRule(f.family, f.url as string)
+        document.head.appendChild(styleEl)
+      })
   }, [fonts])
   return null
 }

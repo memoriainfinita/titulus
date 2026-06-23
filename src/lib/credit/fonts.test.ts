@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { buildGoogleFontUrl, buildCombinedGoogleFontUrl } from "./fonts"
+import {
+  buildGoogleFontUrl,
+  buildCombinedGoogleFontUrl,
+  buildFontFaceRule,
+  fontFormatFromDataUrl,
+  fontFaceStyleId,
+} from "./fonts"
 
 describe("buildGoogleFontUrl", () => {
   it("encodes spaces in the family name as plus signs", () => {
@@ -27,6 +33,42 @@ describe("buildGoogleFontUrl", () => {
 
   it("always requests display=swap", () => {
     expect(buildGoogleFontUrl("Lato", ["400"])).toContain("display=swap")
+  })
+})
+
+describe("fontFormatFromDataUrl", () => {
+  it("maps known font mime types to format hints", () => {
+    expect(fontFormatFromDataUrl("data:font/ttf;base64,AA")).toBe("truetype")
+    expect(fontFormatFromDataUrl("data:font/otf;base64,AA")).toBe("opentype")
+    expect(fontFormatFromDataUrl("data:font/woff2;base64,AA")).toBe("woff2")
+    expect(fontFormatFromDataUrl("data:font/woff;base64,AA")).toBe("woff")
+  })
+
+  it("returns undefined for an unknown or generic mime", () => {
+    expect(fontFormatFromDataUrl("data:application/octet-stream;base64,AA")).toBeUndefined()
+  })
+})
+
+describe("buildFontFaceRule", () => {
+  it("quotes the data url src and includes family and swap", () => {
+    const rule = buildFontFaceRule("'My Font'", "data:font/ttf;base64,AAAA")
+    expect(rule).toContain("font-family: 'My Font'")
+    expect(rule).toContain(`url("data:font/ttf;base64,AAAA")`)
+    expect(rule).toContain("format('truetype')")
+    expect(rule).toContain("font-display: swap")
+  })
+
+  it("omits the format hint when the mime is unknown", () => {
+    const rule = buildFontFaceRule("'X'", "data:application/octet-stream;base64,AAAA")
+    expect(rule).not.toContain("format(")
+    expect(rule).toContain(`url("data:application/octet-stream;base64,AAAA")`)
+  })
+})
+
+describe("fontFaceStyleId", () => {
+  it("builds a stable, sanitized id from the font name", () => {
+    expect(fontFaceStyleId("My Font 2")).toBe("font-face-my-font-2")
+    expect(fontFaceStyleId("Ácido!")).toBe("font-face--cido-")
   })
 })
 
