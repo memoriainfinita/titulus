@@ -22,7 +22,7 @@ import {
   AlignRight,
   Type as TypeIcon,
 } from "lucide-react"
-import { useCreditStore } from "@/lib/credit/store"
+import { useCreditStore, getFontSize } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, Alignment, DividerStyle, DEFAULT_ITEMS } from "@/lib/credit/types"
 import { Button } from "@/components/ui/button"
@@ -88,7 +88,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   isSelected: boolean
   onSelect: () => void
 }) {
-  const { updateItem, removeItem, duplicateItem, moveItem, reorderItems, items, config } = useCreditStore()
+  const { updateItem, removeItem, duplicateItem, moveItem, reorderItems, items, config, fonts } = useCreditStore()
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
   const isLast = index === items.length - 1
@@ -341,6 +341,102 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               className="h-7 w-24 text-sm"
             />
             <span className="text-[10px] text-muted-foreground">vacío = global</span>
+          </div>
+          <div className="border-t pt-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Tamaño</span>
+              <Input
+                type="number" min={1} step={1}
+                value={item.fontSize ?? ""}
+                placeholder={String(getFontSize(item.type, config))}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { fontSize: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { fontSize: Math.max(1, n) })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
+              <span className="text-[10px] text-muted-foreground">vacío = global</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Color</span>
+              <div className="relative w-7 h-7 rounded-md border overflow-hidden shrink-0">
+                <input
+                  type="color"
+                  value={item.color?.trim() ? item.color : config.textColor}
+                  onChange={(e) => updateItem(item.id, { color: e.target.value })}
+                  className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                />
+                <div className="w-full h-full" style={{ backgroundColor: item.color?.trim() ? item.color : config.textColor }} />
+              </div>
+              <Input
+                value={item.color ?? ""}
+                placeholder="global"
+                onChange={(e) => {
+                  const raw = e.target.value
+                  updateItem(item.id, { color: raw === "" ? undefined : raw })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 flex-1 font-mono text-xs"
+              />
+              {item.color != null && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]"
+                  onClick={(e) => { e.stopPropagation(); updateItem(item.id, { color: undefined }) }}>
+                  global
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Fuente</span>
+              <Select
+                value={item.fontFamily ?? "__global"}
+                onValueChange={(v) =>
+                  updateItem(item.id, { fontFamily: v === "__global" ? undefined : v })
+                }
+              >
+                <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__global">(global)</SelectItem>
+                  {fonts.map((f) => (
+                    <SelectItem key={f.id} value={f.family}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Interletra</span>
+              <Input
+                type="number" step={0.5}
+                value={item.letterSpacing ?? ""}
+                placeholder={String(config.letterSpacing)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { letterSpacing: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { letterSpacing: n })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Interlínea</span>
+              <Input
+                type="number" min={0.1} step={0.1}
+                value={item.lineHeight ?? ""}
+                placeholder={String(config.lineHeight)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { lineHeight: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { lineHeight: Math.max(0.1, n) })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
+            </div>
           </div>
         </div>
       )}
