@@ -58,6 +58,21 @@ Funciones puras extraídas y testeables, en línea con `appearing.ts` y `scroll.
 
 Ubicación: `src/lib/credit/separators.ts` (módulo nuevo).
 
+## Persistencia y migración
+
+`store.ts` usa `persist` (zustand) con `partialize` que guarda `config` completo en localStorage (`credit-titles-store`). El merge por defecto al rehidratar es shallow a nivel raíz: el `config` persistido reemplaza `DEFAULT_CONFIG`, no se fusiona. Los nuevos campos quedarían `undefined` para usuarios con estado ya guardado → render roto.
+
+Fix: añadir `merge` custom en las opciones de `persist` que fusione `config` sobre `DEFAULT_CONFIG`:
+
+```ts
+merge: (persisted, current) => {
+  const p = (persisted ?? {}) as Partial<CreditState>
+  return { ...current, ...p, config: { ...DEFAULT_CONFIG, ...(p.config ?? {}) } }
+}
+```
+
+Cubre también cualquier campo de config que se añada en el futuro. `importProject` ya hace el merge equivalente; sin cambios ahí.
+
 ## Render (`ScrollCredits.tsx`, `CreditLine`)
 
 - spacer: `height = resolveSpacerHeight(item, config)`.
@@ -67,13 +82,22 @@ Ubicación: `src/lib/credit/separators.ts` (módulo nuevo).
 
 - Panel de edición nuevo para spacer y divider (hoy excluidos en línea 190):
   - spacer: un control numérico "Alto (px)".
-  - divider: grosor, ancho (%), opacidad, estilo (select solid/dashed/dotted), color.
-  - Todos con placeholder = valor global y nota "vacío = global", patrón de `pauseOverride`.
+  - divider: grosor, ancho (%), opacidad, estilo, color.
+  - Controles concretos (el panel del editor es estrecho, sin sliders):
+    - numéricos (alto, grosor, ancho, opacidad): `Input type=number` con `placeholder` = valor global y nota "vacío = global", patrón de `pauseOverride`.
+    - estilo: `Select` con opciones "(global)" / solid / dashed / dotted; "(global)" = `undefined`.
+    - color: input de texto hex con `placeholder` = color global efectivo; vacío = global. Se usa input de texto, no `<input type=color>`, porque este último no admite valor vacío.
 - En modo appearing: filas de spacer/divider atenuadas (opacidad reducida) con nota "(no se aplica en aparición)".
 
 ## Config global (`ConfigPanel.tsx`)
 
-Controles globales para spacer (alto) y divider (grosor / ancho / opacidad / estilo / color) en la sección Layout.
+Controles globales en la sección "Diseño" (Layout), tras "Padding horizontal":
+
+- spacer: slider "Alto del espacio" (px).
+- divider: sliders grosor (px) / ancho (%) / opacidad (0–1), `Select` de estilo (solid/dashed/dotted).
+- color del divider: switch "Heredar color del texto" (on por defecto → `dividerColor = ""`); al apagarlo se muestra `ColorInput` y `dividerColor` pasa a hex. Mismo patrón que `useGradient` / `useTextShadow`. Se usa porque el `ColorInput` (native `<input type=color>`) no admite vacío.
+
+`PresetBar`: cada preset hace `...DEFAULT_CONFIG`, por lo que incluirán los nuevos defaults automáticamente; aplicar un preset resetea spacer/divider globales a sus valores por defecto. Comportamiento aceptado, sin cambios en `PresetBar`.
 
 ## Puntitos de progreso (`AppearingCredits.tsx`)
 
@@ -82,7 +106,7 @@ Eliminar el bloque "Progress indicator" (líneas 344-357). Sin toggle, sin condi
 ## Tests
 
 - `separators.test.ts`: nuevo. Cobertura de `resolveSpacerHeight` y `resolveDividerStyle` (herencia global, override por item, color vacío → textColor).
-- `store.test.ts`: caso roundtrip import/export de los nuevos campos de `CreditItem`.
+- `store.test.ts`: caso roundtrip import/export de los nuevos campos de `CreditItem` y de los nuevos campos de `config` (verifica que `importProject` los preserva y que el merge con `DEFAULT_CONFIG` rellena los ausentes).
 
 ## Fuera de alcance
 
