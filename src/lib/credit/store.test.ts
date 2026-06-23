@@ -55,6 +55,15 @@ describe("getFontWeight", () => {
   })
 })
 
+describe("setHasHydrated", () => {
+  it("flips the hydration flag", () => {
+    useCreditStore.getState().setHasHydrated(false)
+    expect(useCreditStore.getState()._hasHydrated).toBe(false)
+    useCreditStore.getState().setHasHydrated(true)
+    expect(useCreditStore.getState()._hasHydrated).toBe(true)
+  })
+})
+
 describe("resolveAlignment", () => {
   it("uses the item override when present", () => {
     const item: CreditItem = { id: "x", type: "name", text: "X", align: "left" }

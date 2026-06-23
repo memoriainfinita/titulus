@@ -14,8 +14,13 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Film, Github, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useCreditStore } from "@/lib/credit/store"
 
 export default function Home() {
+  // Wait for zustand/persist to rehydrate before rendering the editor/preview,
+  // so the persisted project doesn't flash the DEFAULT_ITEMS first.
+  const hasHydrated = useCreditStore((s) => s._hasHydrated)
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <FontLoader />
@@ -47,26 +52,32 @@ export default function Home() {
       </header>
 
       {/* Main 3-panel layout */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Left: editor */}
-        <ResizablePanel defaultSize={22} minSize={16} maxSize={32} className="bg-card">
-          <CreditEditor />
-        </ResizablePanel>
+      {hasHydrated ? (
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          {/* Left: editor */}
+          <ResizablePanel defaultSize={22} minSize={16} maxSize={32} className="bg-card">
+            <CreditEditor />
+          </ResizablePanel>
 
-        <ResizableHandle withHandle />
+          <ResizableHandle withHandle />
 
-        {/* Center: preview */}
-        <ResizablePanel defaultSize={48} minSize={30}>
-          <CreditPreview />
-        </ResizablePanel>
+          {/* Center: preview */}
+          <ResizablePanel defaultSize={48} minSize={30}>
+            <CreditPreview />
+          </ResizablePanel>
 
-        <ResizableHandle withHandle />
+          <ResizableHandle withHandle />
 
-        {/* Right: config */}
-        <ResizablePanel defaultSize={30} minSize={22} maxSize={42} className="bg-card">
-          <ConfigPanel />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          {/* Right: config */}
+          <ResizablePanel defaultSize={30} minSize={22} maxSize={42} className="bg-card">
+            <ConfigPanel />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <Film className="h-5 w-5 animate-pulse" />
+        </div>
+      )}
     </div>
   )
 }
