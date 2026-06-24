@@ -13,6 +13,7 @@ import {
   Video,
   Repeat,
   SquareDashedBottom,
+  SquareDashed,
   SkipBack,
   SkipForward,
 } from "lucide-react"
@@ -315,10 +316,19 @@ export function CreditPreview() {
           size="sm"
           variant={config.showSafeMargins ? "default" : "outline"}
           onClick={() => updateConfig({ showSafeMargins: !config.showSafeMargins })}
-          title="Mostrar márgenes seguros (guía, no se exporta)"
+          title="Mostrar guía de márgenes seguros (no se exporta)"
         >
           <SquareDashedBottom className="h-4 w-4 mr-1" />
-          Márgenes
+          Guía
+        </Button>
+        <Button
+          size="sm"
+          variant={config.respectSafeMargins ? "default" : "outline"}
+          onClick={() => updateConfig({ respectSafeMargins: !config.respectSafeMargins })}
+          title="Constreñir el contenido a los márgenes seguros (afecta al vídeo)"
+        >
+          <SquareDashed className="h-4 w-4 mr-1" />
+          Respetar
         </Button>
         <Button size="sm" variant="outline" onClick={toggleFullscreen}>
           {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}
