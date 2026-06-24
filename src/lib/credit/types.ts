@@ -64,6 +64,9 @@ export interface CreditItem {
   // Image (logo) item.
   imageSrc?: string // data URL
   imageWidth?: number // % del ancho del escenario; undefined = hereda config.imageWidth
+  // Wrap overrides. undefined = hereda el global correspondiente.
+  noWrap?: boolean
+  textBoxWidth?: number // % del ancho del escenario; <= 0 se ignora
 }
 
 export interface FontItem {
@@ -99,6 +102,8 @@ export interface CreditConfig {
   alignment: Alignment
   itemSpacing: number
   paddingX: number
+  noWrap: boolean // true = whiteSpace pre (no envuelve automático)
+  textBoxWidth: number // max-width de la caja de texto, % del escenario; 100 = sin límite
   // Spacer / Divider
   spacerHeight: number
   dividerThickness: number
@@ -141,6 +146,7 @@ export interface CreditConfig {
   stageRatio: "16:9" | "21:9" | "4:3" | "9:16" | "1:1"
   // Preview guides (never exported into the video)
   showSafeMargins: boolean // title-safe / action-safe overlay in the editor preview
+  respectSafeMargins: boolean // constriñe el contenido a la caja título-segura; SÍ afecta al export
 }
 
 export interface CreditProject {
@@ -172,6 +178,8 @@ export const DEFAULT_CONFIG: CreditConfig = {
   alignment: "center",
   itemSpacing: 24,
   paddingX: 80,
+  noWrap: false,
+  textBoxWidth: 100,
   spacerHeight: 48,
   dividerThickness: 1,
   dividerWidth: 60,
@@ -206,6 +214,7 @@ export const DEFAULT_CONFIG: CreditConfig = {
   stageHeight: 720,
   stageRatio: "16:9",
   showSafeMargins: false,
+  respectSafeMargins: false,
 }
 
 export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {

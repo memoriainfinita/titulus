@@ -236,6 +236,14 @@ describe("mergePersistedConfig", () => {
     expect(merged.dividerColor).toBe(DEFAULT_CONFIG.dividerColor)
   })
 
+  it("backfills timeline/wrap/safe-margin keys for older persisted state", () => {
+    const merged = mergePersistedConfig({ paddingX: 40 } as Partial<typeof DEFAULT_CONFIG>)
+    expect(merged.paddingX).toBe(40)
+    expect(merged.respectSafeMargins).toBe(false)
+    expect(merged.noWrap).toBe(false)
+    expect(merged.textBoxWidth).toBe(100)
+  })
+
   it("returns full defaults when given undefined", () => {
     expect(mergePersistedConfig(undefined)).toEqual(DEFAULT_CONFIG)
   })
