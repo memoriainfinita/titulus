@@ -13,6 +13,8 @@ import {
   Video,
   Repeat,
   SquareDashedBottom,
+  SkipBack,
+  SkipForward,
 } from "lucide-react"
 
 // Broadcast-style guide margins, as a fraction of the stage inset on each edge.
@@ -39,7 +41,10 @@ function SafeMarginsOverlay() {
 }
 import { useCreditStore } from "@/lib/credit/store"
 import { ScrollCredits } from "./ScrollCredits"
-import { AppearingCredits } from "./AppearingCredits"
+import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
+import { TimelineBar } from "./TimelineBar"
+import { getAppearItemDuration } from "@/lib/credit/appearing"
+import { itemProgressBounds } from "@/lib/credit/timeline"
 import { ExportDialog } from "./ExportDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,6 +74,26 @@ export function CreditPreview() {
   const [exportOpen, setExportOpen] = React.useState(false)
   const [exportProgress, setExportProgress] = React.useState<number | null>(null)
   const [measuredDuration, setMeasuredDuration] = React.useState(10)
+
+  // Timeline state
+  const progressRef = React.useRef(0)
+  const [manualSeek, setManualSeek] = React.useState<number | null>(null)
+  const [currentItemIndex, setCurrentItemIndex] = React.useState(0)
+
+  const navBounds = React.useMemo(
+    () => itemProgressBounds(getVisibleItems(items).map((i) => getAppearItemDuration(i, config))),
+    [items, config],
+  )
+  const navCount = navBounds.length
+
+  const seekToItem = (idx: number) => {
+    const b = navBounds[idx]
+    if (!b) return
+    setPlaying(false)
+    // Land mid-item: robust against float rounding that could fall into the previous item.
+    setManualSeek((b.start + b.end) / 2)
+    setCurrentItemIndex(idx)
+  }
 
   // Calculate scale to fit stage inside container
   React.useEffect(() => {
@@ -212,6 +237,8 @@ export function CreditPreview() {
               config={config}
               isPlaying={isPlaying}
               restartKey={previewKey}
+              manualProgress={manualSeek}
+              onProgressChange={(p) => { progressRef.current = p }}
             />
           ) : (
             <AppearingCredits
@@ -219,10 +246,42 @@ export function CreditPreview() {
               config={config}
               isPlaying={isPlaying}
               restartKey={previewKey}
+              manualProgress={manualSeek}
+              onProgressChange={(p) => { progressRef.current = p }}
+              onIndexChange={setCurrentItemIndex}
             />
           )}
           {config.showSafeMargins && <SafeMarginsOverlay />}
         </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="flex items-center gap-2 px-3 pt-2">
+        {config.mode === "appearing" && (
+          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+            onClick={() => seekToItem(Math.max(0, currentItemIndex - 1))}
+            disabled={currentItemIndex <= 0} title="Item anterior">
+            <SkipBack className="h-4 w-4" />
+          </Button>
+        )}
+        <TimelineBar
+          progressRef={progressRef}
+          seekValue={manualSeek}
+          onSeekStart={() => { setPlaying(false); setManualSeek(progressRef.current) }}
+          onSeek={(v) => setManualSeek(v)}
+        />
+        {config.mode === "appearing" && (
+          <>
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+              onClick={() => seekToItem(Math.min(navCount - 1, currentItemIndex + 1))}
+              disabled={currentItemIndex >= navCount - 1} title="Item siguiente">
+              <SkipForward className="h-4 w-4" />
+            </Button>
+            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 w-12 text-right">
+              {navCount > 0 ? `${Math.min(currentItemIndex, navCount - 1) + 1} / ${navCount}` : "0 / 0"}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Controls */}
@@ -230,12 +289,16 @@ export function CreditPreview() {
         <Button
           size="sm"
           variant={isPlaying ? "default" : "outline"}
-          onClick={() => setPlaying(!isPlaying)}
+          onClick={() => {
+            const next = !isPlaying
+            setPlaying(next)
+            if (next) setManualSeek(null) // resume: clear the frozen seek (ScrollCredits seeds from it)
+          }}
         >
           {isPlaying ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
           {isPlaying ? "Pausar" : "Reproducir"}
         </Button>
-        <Button size="sm" variant="outline" onClick={restartPreview}>
+        <Button size="sm" variant="outline" onClick={() => { setManualSeek(null); restartPreview() }}>
           <RotateCcw className="h-4 w-4 mr-1" />
           Reiniciar
         </Button>
