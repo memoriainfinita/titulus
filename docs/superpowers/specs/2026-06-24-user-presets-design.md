@@ -67,8 +67,10 @@ interface UserPreset {
 
 - `saveUserPreset` añade un preset cuyo `config` iguala al `config` actual de la store.
 - `applyUserPreset` deja `config` igual al guardado; con una clave eliminada del preset guardado, esa clave queda con su valor de `DEFAULT_CONFIG` (backfill).
+- `applyUserPreset` con un id inexistente no cambia el `config` (no-op).
 - `deleteUserPreset` elimina el preset por id.
-- Roundtrip de persistencia: un estado persistido sin `userPresets` rehidrata a `[]` (vía `merge`); un estado con `userPresets` los conserva.
+
+La persistencia en localStorage (`partialize` + backfill `userPresets: p.userPresets ?? []` en `merge`) no se unit-testea, en línea con el resto de slices persistidos del codebase (p. ej. `fonts`); se cubre con verificación manual (recargar la página conserva los presets).
 
 ## Fuera de alcance (YAGNI)
 
