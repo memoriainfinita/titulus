@@ -15,6 +15,8 @@ import {
   AlignRight,
   ArrowUp,
   ArrowDown,
+  Bookmark,
+  X,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle } from "@/lib/credit/types"
@@ -41,6 +43,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -748,7 +765,19 @@ export function ConfigPanel() {
 
 // Quick presets the user can apply
 export function PresetBar() {
-  const { updateConfig, config } = useCreditStore()
+  const { updateConfig, config, userPresets, saveUserPreset, deleteUserPreset, applyUserPreset } =
+    useCreditStore()
+  const [saveOpen, setSaveOpen] = React.useState(false)
+  const [name, setName] = React.useState("")
+  const trimmed = name.trim()
+  const nameTaken = userPresets.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())
+  const canSave = trimmed.length > 0 && !nameTaken
+  const handleSave = () => {
+    if (!canSave) return
+    saveUserPreset(trimmed)
+    setName("")
+    setSaveOpen(false)
+  }
   const presets: { name: string; patch: Partial<CreditConfig> }[] = [
     {
       name: "Cine clásico",
@@ -848,6 +877,90 @@ export function PresetBar() {
           {p.name}
         </Button>
       ))}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+            <Bookmark className="h-3.5 w-3.5" />
+            Mis presets
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {userPresets.length === 0 ? (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Sin presets guardados</div>
+          ) : (
+            userPresets.map((p) => (
+              <DropdownMenuItem
+                key={p.id}
+                onSelect={() => applyUserPreset(p.id)}
+                className="flex items-center justify-between gap-2"
+              >
+                <span className="truncate">{p.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Borrar ${p.name}`}
+                  className="shrink-0 rounded p-0.5 hover:bg-destructive/20"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    deleteUserPreset(p.id)
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuItem>
+            ))
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault()
+              setSaveOpen(true)
+            }}
+          >
+            Guardar actual…
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog
+        open={saveOpen}
+        onOpenChange={(o) => {
+          setSaveOpen(o)
+          if (!o) setName("")
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Guardar preset</DialogTitle>
+            <DialogDescription>
+              Guarda la configuración actual como un preset reutilizable.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nombre del preset"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave()
+              }}
+            />
+            {nameTaken && (
+              <p className="text-xs text-destructive">Ya existe un preset con ese nombre</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSaveOpen(false)}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={!canSave}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
