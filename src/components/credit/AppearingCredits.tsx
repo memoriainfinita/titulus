@@ -15,6 +15,8 @@ import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
 import { resolveImageWidth } from "@/lib/credit/image"
+import { resolveSafeInset } from "@/lib/credit/safeMargins"
+import { itemProgressBounds } from "@/lib/credit/timeline"
 
 interface AppearingCreditsProps {
   items: CreditItem[]
@@ -26,10 +28,13 @@ interface AppearingCreditsProps {
   manualProgress?: number | null
   // Reports total duration in seconds (for export)
   onDurationChange?: (durationSec: number) => void
+  // Timeline reporting (item-granular).
+  onProgressChange?: (p: number) => void
+  onIndexChange?: (i: number) => void
 }
 
 // Filter out spacer and divider items — they don't appear in this mode
-function getVisibleItems(items: CreditItem[]): CreditItem[] {
+export function getVisibleItems(items: CreditItem[]): CreditItem[] {
   return items.filter((i) => i.type !== "spacer" && i.type !== "divider")
 }
 
@@ -121,9 +126,9 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
         textTransform: item.uppercase ? "uppercase" : undefined,
         fontStyle: item.italic ? "italic" : undefined,
         padding: `0 ${config.paddingX}px`,
-        maxWidth: "100%",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
+        maxWidth: ts.maxWidth,
+        whiteSpace: ts.whiteSpace,
+        wordBreak: ts.wordBreak,
       }}
     >
       {item.text || "\u00A0"}
@@ -138,6 +143,8 @@ export function AppearingCredits({
   restartKey,
   manualProgress = null,
   onDurationChange,
+  onProgressChange,
+  onIndexChange,
 }: AppearingCreditsProps) {
   const visibleItems = React.useMemo(() => getVisibleItems(items), [items])
   const [currentIndex, setCurrentIndex] = React.useState(0)
@@ -157,6 +164,15 @@ export function AppearingCredits({
   React.useEffect(() => {
     if (onDurationChange) onDurationChange(totalDuration)
   }, [totalDuration, onDurationChange])
+
+  // Report item-granular progress and current index upward (timeline), not in manual mode.
+  React.useEffect(() => {
+    if (manualProgress !== null) return
+    onIndexChange?.(currentIndex)
+    const bounds = itemProgressBounds(itemDurations)
+    const b = bounds[Math.min(currentIndex, bounds.length - 1)]
+    if (b) onProgressChange?.(b.start)
+  }, [currentIndex, manualProgress, itemDurations, onProgressChange, onIndexChange])
 
   // When manualProgress is provided, derive currentIndex and typedText from it
   React.useEffect(() => {
@@ -292,7 +308,11 @@ export function AppearingCredits({
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center overflow-hidden relative"
-      style={backgroundStyle}
+      style={{
+        ...backgroundStyle,
+        paddingLeft: `${resolveSafeInset(config) * 100}%`,
+        paddingRight: `${resolveSafeInset(config) * 100}%`,
+      }}
     >
       {config.vignetteEnabled && (
         <>
@@ -352,8 +372,9 @@ export function AppearingCredits({
                 textTransform: currentItem.uppercase ? "uppercase" : undefined,
                 fontStyle: currentItem.italic ? "italic" : undefined,
                 padding: `0 ${config.paddingX}px`,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
+                maxWidth: resolveTextStyle(currentItem, config).maxWidth,
+                whiteSpace: resolveTextStyle(currentItem, config).whiteSpace,
+                wordBreak: resolveTextStyle(currentItem, config).wordBreak,
                 minHeight: "1.5em",
                 filter:
                   resolveTextBlur(currentItem, config) > 0
