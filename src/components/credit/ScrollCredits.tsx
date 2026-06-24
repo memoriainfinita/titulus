@@ -10,6 +10,7 @@ import { resolveTextShadow } from "@/lib/credit/text-shadow"
 import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
 import { resolveImageWidth } from "@/lib/credit/image"
+import { resolveSafeInset } from "@/lib/credit/safeMargins"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -21,6 +22,8 @@ interface ScrollCreditsProps {
   manualProgress?: number | null
   // When true, exposes the measured duration (in seconds) via onDurationChange
   onDurationChange?: (durationSec: number) => void
+  // Reports current progress (0-1) during internal playback (for the timeline).
+  onProgressChange?: (p: number) => void
 }
 
 // Build the inline style for an individual credit item
@@ -46,9 +49,12 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
     fontStyle: item.italic ? "italic" : undefined,
     padding: `0 ${config.paddingX}px`,
     width: "100%",
+    maxWidth: ts.maxWidth,
+    marginLeft: "auto",
+    marginRight: "auto",
     boxSizing: "border-box",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
+    whiteSpace: ts.whiteSpace,
+    wordBreak: ts.wordBreak,
   }
 }
 
@@ -126,6 +132,7 @@ export function ScrollCredits({
   restartKey,
   manualProgress = null,
   onDurationChange,
+  onProgressChange,
 }: ScrollCreditsProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
@@ -207,6 +214,25 @@ export function ScrollCredits({
     onDurationChange(durationSec + config.endPause)
   }, [contentHeight, containerHeight, config.scrollSpeed, config.endPause, onDurationChange])
 
+  // Report internal progress upward (timeline), but not in manual/export mode.
+  React.useEffect(() => {
+    if (manualProgress !== null) return
+    onProgressChange?.(internalProgress)
+  }, [internalProgress, manualProgress, onProgressChange])
+
+  // When leaving manual mode (scrub release -> Play), resume from the scrubbed point.
+  const lastManualRef = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    if (manualProgress !== null) {
+      lastManualRef.current = manualProgress
+      return
+    }
+    if (lastManualRef.current !== null) {
+      setInternalProgress(lastManualRef.current)
+      lastManualRef.current = null
+    }
+  }, [manualProgress])
+
   // Calculate translateY
   const translateY = getScrollTranslateY(
     contentHeight,
@@ -254,8 +280,10 @@ export function ScrollCredits({
       )}
       <div
         ref={contentRef}
-        className="absolute left-0 right-0"
+        className="absolute"
         style={{
+          left: `${resolveSafeInset(config) * 100}%`,
+          right: `${resolveSafeInset(config) * 100}%`,
           transform: `translate3d(0, ${translateY}px, 0)`,
           willChange: "transform",
         }}
