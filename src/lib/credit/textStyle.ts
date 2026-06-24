@@ -11,6 +11,9 @@ export interface ResolvedTextStyle {
   color: string
   letterSpacing: number
   lineHeight: number
+  whiteSpace: "pre" | "pre-wrap"
+  wordBreak: "break-word" | "normal"
+  maxWidth: string
 }
 
 export function resolveTextStyle(item: CreditItem, config: CreditConfig): ResolvedTextStyle {
@@ -24,5 +27,13 @@ export function resolveTextStyle(item: CreditItem, config: CreditConfig): Resolv
     typeof item.letterSpacing === "number" ? item.letterSpacing : config.letterSpacing
   const lineHeight =
     typeof item.lineHeight === "number" && item.lineHeight > 0 ? item.lineHeight : config.lineHeight
-  return { fontFamily, fontSize, color, letterSpacing, lineHeight }
+  const noWrap = item.noWrap ?? config.noWrap
+  const whiteSpace = noWrap ? "pre" : "pre-wrap"
+  const wordBreak = noWrap ? "normal" : "break-word"
+  const boxWidth =
+    typeof item.textBoxWidth === "number" && item.textBoxWidth > 0
+      ? item.textBoxWidth
+      : config.textBoxWidth
+  const maxWidth = `${boxWidth}%`
+  return { fontFamily, fontSize, color, letterSpacing, lineHeight, whiteSpace, wordBreak, maxWidth }
 }
