@@ -14,9 +14,10 @@ Permitir guardar y reutilizar configuraciones de aspecto propias, además de los
 ## Decisiones
 
 - Un preset captura **solo `config`** (snapshot completo de `CreditConfig`). No guarda items ni fuentes.
-- UI: **menú desplegable propio** ("Mis presets"), separado de los 6 botones fijos.
+- UI: **menú desplegable propio** ("Mis presets"), separado de los 6 botones fijos, montado **dentro del componente `PresetBar`** (no se toca `page.tsx`).
 - Persistencia: **locales al navegador** (localStorage vía zustand). NO viajan en el JSON de export de proyecto.
 - Guardar: **diálogo con campo de nombre** (estilo `Dialog`). Nombre vacío (tras `trim`) no permitido.
+- Nombres duplicados: **bloqueados**. El diálogo no deja guardar si el nombre (tras `trim`, comparación case-insensitive) ya existe entre `userPresets`; botón deshabilitado + texto de aviso.
 
 ## Modelo de datos
 
@@ -30,6 +31,8 @@ interface UserPreset {
   createdAt: number
 }
 ```
+
+`UserPreset` se exporta desde `types.ts`. En `store.ts`, la interface `CreditState` declara el campo `userPresets: UserPreset[]` y las tres acciones (`saveUserPreset`, `deleteUserPreset`, `applyUserPreset`).
 
 ## Store
 
@@ -47,13 +50,16 @@ interface UserPreset {
 
 ## UI
 
-`src/components/credit/ConfigPanel.tsx`, en/junto a `PresetBar`:
+`src/components/credit/ConfigPanel.tsx`, dentro del componente `PresetBar`:
 
 - Los 6 botones fijos quedan igual.
 - Botón nuevo **"Mis presets"** que abre un `DropdownMenu`:
-  - Por cada preset propio: ítem con el nombre (clic → `applyUserPreset(id)`) y un icono `x` a la derecha (clic → `deleteUserPreset(id)`, sin cerrar inadvertidamente / sin aplicar).
+  - Por cada preset propio, una fila con:
+    - El nombre como `DropdownMenuItem` cuyo `onSelect` llama `applyUserPreset(id)` (cierra el menú, comportamiento por defecto deseado).
+    - Un `button` con icono `X` (lucide) a la derecha; su `onClick` hace `e.preventDefault()` + `e.stopPropagation()` y llama `deleteUserPreset(id)`, para no disparar el apply de la fila ni cerrar el menú.
   - Lista vacía: ítem atenuado no interactivo "Sin presets guardados".
-  - Separador + ítem **"Guardar actual…"** → abre un `Dialog` con input de nombre y botón Guardar. El botón se deshabilita si el nombre con `trim` está vacío. Guardar → `saveUserPreset(name.trim())` y cierra el diálogo.
+  - Separador + ítem **"Guardar actual…"**: su `onSelect` hace `e.preventDefault()` (evita el autocierre de Radix que rompería el foco) y abre el diálogo vía `setSaveOpen(true)`.
+- **Diálogo de guardar** (`Dialog`): vive **fuera** del `DropdownMenu`, controlado por un `useState` local `saveOpen` en `PresetBar`. Contiene un input de nombre y botón Guardar. El botón se deshabilita si el nombre con `trim` está vacío **o** ya existe (case-insensitive) entre `userPresets`; en el segundo caso, texto de aviso "Ya existe un preset con ese nombre". Guardar → `saveUserPreset(name.trim())`, limpia el input y cierra el diálogo.
 
 ## Tests
 
