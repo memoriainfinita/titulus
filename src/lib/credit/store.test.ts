@@ -286,3 +286,56 @@ describe("resolveFontWeight", () => {
     expect(resolveFontWeight({ id: "n", type: "name", text: "", fontWeight: 0 }, cfg)).toBe(500)
   })
 })
+
+describe("user presets", () => {
+  beforeEach(() => {
+    useCreditStore.setState({ userPresets: [], config: { ...DEFAULT_CONFIG } })
+  })
+
+  it("saveUserPreset captures the current config", () => {
+    useCreditStore.getState().updateConfig({ textColor: "#abcdef", fontSizeTitle: 99 })
+    useCreditStore.getState().saveUserPreset("Mi look")
+    const presets = useCreditStore.getState().userPresets
+    expect(presets).toHaveLength(1)
+    expect(presets[0].name).toBe("Mi look")
+    expect(presets[0].config.textColor).toBe("#abcdef")
+    expect(presets[0].config.fontSizeTitle).toBe(99)
+    expect(typeof presets[0].id).toBe("string")
+  })
+
+  it("applyUserPreset restores the saved config", () => {
+    useCreditStore.getState().updateConfig({ textColor: "#abcdef" })
+    useCreditStore.getState().saveUserPreset("Mi look")
+    const id = useCreditStore.getState().userPresets[0].id
+    useCreditStore.getState().updateConfig({ textColor: "#000000" })
+    useCreditStore.getState().applyUserPreset(id)
+    expect(useCreditStore.getState().config.textColor).toBe("#abcdef")
+  })
+
+  it("applyUserPreset backfills config keys missing from an older preset", () => {
+    const partial: Partial<CreditConfig> = { ...DEFAULT_CONFIG, textColor: "#abcdef" }
+    delete (partial as Record<string, unknown>).textBoxWidth
+    useCreditStore.setState({
+      userPresets: [{ id: "old", name: "Old", config: partial as CreditConfig, createdAt: 0 }],
+    })
+    useCreditStore.getState().applyUserPreset("old")
+    expect(useCreditStore.getState().config.textColor).toBe("#abcdef")
+    expect(useCreditStore.getState().config.textBoxWidth).toBe(DEFAULT_CONFIG.textBoxWidth)
+  })
+
+  it("applyUserPreset is a no-op for an unknown id", () => {
+    useCreditStore.getState().updateConfig({ textColor: "#abcdef" })
+    useCreditStore.getState().applyUserPreset("nope")
+    expect(useCreditStore.getState().config.textColor).toBe("#abcdef")
+  })
+
+  it("deleteUserPreset removes the preset by id", () => {
+    useCreditStore.getState().saveUserPreset("A")
+    useCreditStore.getState().saveUserPreset("B")
+    const id = useCreditStore.getState().userPresets[0].id
+    useCreditStore.getState().deleteUserPreset(id)
+    const presets = useCreditStore.getState().userPresets
+    expect(presets).toHaveLength(1)
+    expect(presets[0].name).toBe("B")
+  })
+})

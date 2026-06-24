@@ -79,6 +79,13 @@ export interface FontItem {
   weights?: string[]
 }
 
+export interface UserPreset {
+  id: string
+  name: string
+  config: CreditConfig // full snapshot of config at save time
+  createdAt: number
+}
+
 export interface CreditConfig {
   mode: CreditMode
   // Typography

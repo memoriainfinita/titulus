@@ -11,6 +11,7 @@ import {
   DEFAULT_ITEMS,
   FontItem,
   Alignment,
+  UserPreset,
 } from "./types"
 
 interface CreditState {
@@ -18,6 +19,7 @@ interface CreditState {
   items: CreditItem[]
   config: CreditConfig
   fonts: FontItem[]
+  userPresets: UserPreset[]
   selectedItemId: string | null
   projectName: string
 
@@ -40,6 +42,10 @@ interface CreditState {
 
   updateConfig: (patch: Partial<CreditConfig>) => void
   resetConfig: () => void
+
+  saveUserPreset: (name: string) => void
+  deleteUserPreset: (id: string) => void
+  applyUserPreset: (id: string) => void
 
   addFont: (font: FontItem) => void
   removeFont: (id: string) => void
@@ -145,6 +151,7 @@ export const useCreditStore = create<CreditState>()(
       items: DEFAULT_ITEMS,
       config: DEFAULT_CONFIG,
       fonts: DEFAULT_FONTS,
+      userPresets: [],
       selectedItemId: null,
       projectName: "Mi Proyecto de Créditos",
 
@@ -238,6 +245,26 @@ export const useCreditStore = create<CreditState>()(
 
       resetConfig: () => set({ config: DEFAULT_CONFIG }),
 
+      saveUserPreset: (name) =>
+        set((state) => ({
+          userPresets: [
+            ...state.userPresets,
+            { id: uuid(), name, config: { ...state.config }, createdAt: Date.now() },
+          ],
+        })),
+
+      deleteUserPreset: (id) =>
+        set((state) => ({
+          userPresets: state.userPresets.filter((p) => p.id !== id),
+        })),
+
+      applyUserPreset: (id) =>
+        set((state) => {
+          const preset = state.userPresets.find((p) => p.id === id)
+          if (!preset) return state
+          return { config: { ...DEFAULT_CONFIG, ...preset.config } }
+        }),
+
       addFont: (font) => set((state) => ({ fonts: [...state.fonts, font] })),
 
       removeFont: (id) =>
@@ -288,10 +315,16 @@ export const useCreditStore = create<CreditState>()(
         config: state.config,
         fonts: state.fonts,
         projectName: state.projectName,
+        userPresets: state.userPresets,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<CreditState>
-        return { ...current, ...p, config: mergePersistedConfig(p.config) }
+        return {
+          ...current,
+          ...p,
+          config: mergePersistedConfig(p.config),
+          userPresets: p.userPresets ?? [],
+        }
       },
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
