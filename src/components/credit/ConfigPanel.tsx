@@ -9,6 +9,7 @@ import {
   Settings2,
   RotateCcw,
   Gauge,
+  Wand2,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -396,7 +397,10 @@ export function ConfigPanel() {
                 />
               </Field>
             )}
-            <Separator />
+          </Section>
+
+          {/* EFFECTS */}
+          <Section title="Efectos" icon={Wand2}>
             <div className="flex items-center justify-between">
               <Label className="text-xs">Sombra de texto</Label>
               <Switch
