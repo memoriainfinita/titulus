@@ -32,7 +32,7 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
   const ts = resolveTextStyle(item, config)
   const fontWeight = resolveFontWeight(item, config)
 
-  const shadow = resolveTextShadow(config)
+  const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
 
   return {

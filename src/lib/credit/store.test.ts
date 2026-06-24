@@ -242,6 +242,37 @@ describe("project import/export", () => {
     expect(items[0].noWrap).toBe(true)
     expect(items[0].textBoxWidth).toBe(50)
   })
+
+  it("preserves per-item shadow and typewriter overrides through export then import", () => {
+    useCreditStore.setState({
+      items: [
+        {
+          id: "a",
+          type: "name",
+          text: "Ada",
+          useTextShadow: false,
+          textShadowColor: "#ff0000",
+          textShadowBlur: 8,
+          textShadowX: 3,
+          textShadowY: -2,
+          textShadowOpacity: 0.5,
+          typewriterSpeed: 120,
+        },
+      ],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    expect(useCreditStore.getState().importProject(json)).toBe(true)
+
+    const it0 = useCreditStore.getState().items[0]
+    expect(it0.useTextShadow).toBe(false)
+    expect(it0.textShadowColor).toBe("#ff0000")
+    expect(it0.textShadowBlur).toBe(8)
+    expect(it0.textShadowX).toBe(3)
+    expect(it0.textShadowY).toBe(-2)
+    expect(it0.textShadowOpacity).toBe(0.5)
+    expect(it0.typewriterSpeed).toBe(120)
+  })
 })
 
 describe("mergePersistedConfig", () => {

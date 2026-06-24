@@ -4,6 +4,7 @@ import {
   resolveAnimationType,
   resolveAnimationDuration,
   resolveAnimationTunables,
+  resolveTypewriterSpeed,
 } from "./appearing"
 import { DEFAULT_CONFIG, CreditItem, CreditConfig } from "./types"
 
@@ -112,5 +113,28 @@ describe("per-item animation resolvers", () => {
     // Item overrides the duration of a fade
     const faded = getAppearItemDuration(makeItem({ animationDuration: 4, pauseOverride: 0 }), config)
     expect(faded).toBe(4)
+  })
+})
+
+describe("resolveTypewriterSpeed", () => {
+  const config = makeConfig({ typewriterSpeed: 50 })
+
+  it("inherits the global speed by default", () => {
+    expect(resolveTypewriterSpeed(makeItem(), config)).toBe(50)
+  })
+
+  it("uses a positive per-item override", () => {
+    expect(resolveTypewriterSpeed(makeItem({ typewriterSpeed: 120 }), config)).toBe(120)
+  })
+
+  it("ignores a non-positive override and inherits the global speed", () => {
+    expect(resolveTypewriterSpeed(makeItem({ typewriterSpeed: 0 }), config)).toBe(50)
+    expect(resolveTypewriterSpeed(makeItem({ typewriterSpeed: -10 }), config)).toBe(50)
+  })
+
+  it("getAppearItemDuration scales typing time with a per-item speed", () => {
+    const cfg = makeConfig({ animationType: "typewriter", typewriterSpeed: 50, pauseDuration: 0 })
+    const text = "x".repeat(100) // 100 chars * 100ms = 10s
+    expect(getAppearItemDuration(makeItem({ text, typewriterSpeed: 100, pauseOverride: 0 }), cfg)).toBe(10)
   })
 })
