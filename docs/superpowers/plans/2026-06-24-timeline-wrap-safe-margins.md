@@ -571,26 +571,20 @@ import * as React from "react"
 
 interface TimelineBarProps {
   progressRef: React.MutableRefObject<number>
-  isScrubbing: boolean
-  seekValue: number
+  // null = playing/idle (follow progressRef); number = a seek is active (frozen at that value)
+  seekValue: number | null
   onSeekStart: () => void
   onSeek: (v: number) => void
-  onSeekEnd: () => void
 }
 
-// Progress bar under the stage. While playing it follows progressRef via its own
-// RAF (no parent re-render); while scrubbing it shows the controlled seek value.
-export function TimelineBar({
-  progressRef,
-  isScrubbing,
-  seekValue,
-  onSeekStart,
-  onSeek,
-  onSeekEnd,
-}: TimelineBarProps) {
+// Progress bar under the stage. When no seek is active it follows progressRef via
+// its own RAF (no parent re-render). When a seek is active (scrubbing OR frozen
+// after release) it shows the controlled seek value — so the thumb never jumps back.
+export function TimelineBar({ progressRef, seekValue, onSeekStart, onSeek }: TimelineBarProps) {
+  const seekActive = seekValue !== null
   const [display, setDisplay] = React.useState(0)
   React.useEffect(() => {
-    if (isScrubbing) return
+    if (seekActive) return
     let raf: number
     const loop = () => {
       setDisplay(progressRef.current)
@@ -598,9 +592,9 @@ export function TimelineBar({
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [isScrubbing, progressRef])
+  }, [seekActive, progressRef])
 
-  const value = isScrubbing ? seekValue : display
+  const value = seekActive ? (seekValue as number) : display
   return (
     <input
       type="range"
@@ -610,7 +604,6 @@ export function TimelineBar({
       value={value}
       onPointerDown={onSeekStart}
       onChange={(e) => onSeek(parseFloat(e.target.value))}
-      onPointerUp={onSeekEnd}
       className="w-full accent-primary cursor-pointer"
       aria-label="Línea de tiempo"
     />
@@ -635,7 +628,6 @@ Dentro del componente, junto a los demás `useState`:
 ```ts
   const progressRef = React.useRef(0)
   const [manualSeek, setManualSeek] = React.useState<number | null>(null)
-  const [isScrubbing, setIsScrubbing] = React.useState(false)
   const [currentItemIndex, setCurrentItemIndex] = React.useState(0)
 
   const navBounds = React.useMemo(
@@ -648,8 +640,8 @@ Dentro del componente, junto a los demás `useState`:
     const b = navBounds[idx]
     if (!b) return
     setPlaying(false)
-    setIsScrubbing(false)
-    setManualSeek(b.start)
+    // Land mid-item: robust against float rounding that could fall into the previous item.
+    setManualSeek((b.start + b.end) / 2)
     setCurrentItemIndex(idx)
   }
 ```
@@ -677,14 +669,14 @@ Botón Play/Pausar `onClick`: cambiar a una función que al **arrancar** limpie 
           onClick={() => {
             const next = !isPlaying
             setPlaying(next)
-            if (next) { setManualSeek(null); setIsScrubbing(false) }
+            if (next) setManualSeek(null) // resume: clear the frozen seek (ScrollCredits seeds from it)
           }}
 ```
 
 Botón Reiniciar `onClick`: cambiar a:
 
 ```tsx
-          onClick={() => { setManualSeek(null); setIsScrubbing(false); restartPreview() }}
+          onClick={() => { setManualSeek(null); restartPreview() }}
 ```
 
 - [ ] **Step 5: Insertar la barra y los controles de item**
@@ -703,11 +695,9 @@ Justo encima del div de controles (`<div className="flex items-center justify-ce
         )}
         <TimelineBar
           progressRef={progressRef}
-          isScrubbing={isScrubbing}
-          seekValue={manualSeek ?? 0}
-          onSeekStart={() => { setIsScrubbing(true); setPlaying(false); setManualSeek(progressRef.current) }}
+          seekValue={manualSeek}
+          onSeekStart={() => { setPlaying(false); setManualSeek(progressRef.current) }}
           onSeek={(v) => setManualSeek(v)}
-          onSeekEnd={() => setIsScrubbing(false)}
         />
         {config.mode === "appearing" && (
           <>
@@ -858,9 +848,17 @@ git commit -m "feat: global no-wrap toggle and text box width control"
 **Interfaces:**
 - Consumes: `item.noWrap`, `item.textBoxWidth`, `updateItem`, `config` (para placeholder).
 
-- [ ] **Step 1: Añadir los controles por item**
+- [ ] **Step 1: Importar `Switch`**
 
-En el bloque de overrides de texto, tras el control de Interlineado (`lineHeight`, ~line 569), añadir dentro del mismo contenedor de overrides:
+`CreditEditor.tsx` importa `Input` (line 31) pero **no** `Switch`. Añadir junto a los imports de UI:
+
+```ts
+import { Switch } from "@/components/ui/switch"
+```
+
+- [ ] **Step 2: Añadir los controles por item**
+
+El contenedor de overrides de texto termina con la fila "Peso" (`fontWeight`) y luego cierra con `</div>` justo antes de `{config.mode === "appearing" && (<AnimationOverrides .../>)}` (~line 592). Insertar, **después de la fila "Peso" y antes de ese `</div>` de cierre**, replicando el estilo de las filas existentes (label `w-16`, `Input` `w-24`, `onClick` con `stopPropagation` porque la fila del item es seleccionable):
 
 ```tsx
             <div className="flex items-center gap-2">
@@ -868,41 +866,39 @@ En el bloque de overrides de texto, tras el control de Interlineado (`lineHeight
               <Switch
                 checked={item.noWrap ?? false}
                 onCheckedChange={(v) => updateItem(item.id, { noWrap: v || undefined })}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Ancho caja</span>
               <Input
-                type="number"
-                min={1}
-                max={100}
+                type="number" min={1} max={100} step={1}
                 value={item.textBoxWidth ?? ""}
                 placeholder={String(config.textBoxWidth)}
                 onChange={(e) => {
                   const raw = e.target.value
                   if (raw === "") { updateItem(item.id, { textBoxWidth: undefined }); return }
-                  const n = Number(raw)
+                  const n = Number(raw); if (Number.isNaN(n)) return
                   updateItem(item.id, { textBoxWidth: Math.max(1, Math.min(100, n)) })
                 }}
-                className="h-7 text-xs"
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
               />
             </div>
 ```
 
-Nota: confirmar que `Switch` e `Input` están importados en el archivo; si falta `Switch`, añadir `import { Switch } from "@/components/ui/switch"`.
-
-- [ ] **Step 2: Verificar tipos y suite**
+- [ ] **Step 3: Verificar tipos y suite**
 
 Run: `pnpm exec tsc --noEmit`
 Expected: 0 errores.
 Run: `pnpm test:run`
 Expected: verde.
 
-- [ ] **Step 3: Verificación manual (anotar)**
+- [ ] **Step 4: Verificación manual (anotar)**
 
-Cada item de texto puede forzar su propio no-envolver y su ancho de caja; vacío hereda el global (placeholder muestra el valor global).
+Cada item de texto puede forzar su propio no-envolver y su ancho de caja; vacío hereda el global (placeholder muestra el valor global). Tocar el control no deselecciona la fila (stopPropagation).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/components/credit/CreditEditor.tsx
