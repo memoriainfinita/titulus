@@ -29,6 +29,7 @@ import { CreditItem, CreditConfig, CreditItemType, CREDIT_TYPE_LABELS, Alignment
 import { resolveAnimationType } from "@/lib/credit/appearing"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -588,6 +589,30 @@ function ItemRow({ item, index, isSelected, onSelect }: {
                 className="h-7 w-24 text-sm"
               />
               <span className="text-[10px] text-muted-foreground">vacío = global</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">No envolver</span>
+              <Switch
+                checked={item.noWrap ?? false}
+                onCheckedChange={(v) => updateItem(item.id, { noWrap: v || undefined })}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Ancho caja</span>
+              <Input
+                type="number" min={1} max={100} step={1}
+                value={item.textBoxWidth ?? ""}
+                placeholder={String(config.textBoxWidth)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") { updateItem(item.id, { textBoxWidth: undefined }); return }
+                  const n = Number(raw); if (Number.isNaN(n)) return
+                  updateItem(item.id, { textBoxWidth: Math.max(1, Math.min(100, n)) })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 text-sm"
+              />
             </div>
           </div>
           {config.mode === "appearing" && (
