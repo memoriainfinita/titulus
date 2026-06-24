@@ -50,3 +50,25 @@ describe("resolveTextStyle", () => {
     expect(r.fontFamily).toBe("'Inter', sans-serif")
   })
 })
+
+describe("resolveTextStyle wrap/box-width", () => {
+  it("wraps by default", () => {
+    const s = resolveTextStyle(item(), cfg())
+    expect(s.whiteSpace).toBe("pre-wrap")
+    expect(s.wordBreak).toBe("break-word")
+    expect(s.maxWidth).toBe("100%")
+  })
+  it("global noWrap switches to pre/normal", () => {
+    const s = resolveTextStyle(item(), cfg({ noWrap: true }))
+    expect(s.whiteSpace).toBe("pre")
+    expect(s.wordBreak).toBe("normal")
+  })
+  it("per-item noWrap overrides global", () => {
+    const s = resolveTextStyle(item({ noWrap: false }), cfg({ noWrap: true }))
+    expect(s.whiteSpace).toBe("pre-wrap")
+  })
+  it("per-item textBoxWidth overrides global; invalid falls back", () => {
+    expect(resolveTextStyle(item({ textBoxWidth: 60 }), cfg()).maxWidth).toBe("60%")
+    expect(resolveTextStyle(item({ textBoxWidth: 0 }), cfg({ textBoxWidth: 80 })).maxWidth).toBe("80%")
+  })
+})
