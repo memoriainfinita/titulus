@@ -285,6 +285,7 @@ export function CreditPreview() {
           seekValue={manualSeek}
           onSeekStart={() => { setPlaying(false); setManualSeek(progressRef.current) }}
           onSeek={(v) => setManualSeek(v)}
+          ticks={config.mode === "appearing" ? navBounds.map((b) => b.start) : undefined}
         />
         {config.mode === "appearing" && (
           <>
