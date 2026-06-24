@@ -89,6 +89,9 @@
 - [x] `next.config.ts`: quitados los parches z.ai `typescript.ignoreBuildErrors: true` y `output: "standalone"` (este último sobraba sin el deploy con bun). Resuelto 2026-06-23: `next build` ahora ejecuta el type-check (antes lo saltaba) y pasa limpio.
 - [ ] Control del salto de línea / wrap del texto. Pedido 2026-06-23: el wrap automático rompe las líneas donde decide el navegador, sin control del usuario. Estado actual: el render usa `whiteSpace: "pre-wrap"` + `wordBreak: "break-word"` (en `getItemStyle` de `ScrollCredits` y en `AppearItem`/typewriter de `AppearingCredits`); respeta los saltos manuales (`\n` del textarea) pero el ancho al que envuelve lo fijan el escenario y `config.paddingX`. Dar control explícito: p. ej. opción por item / global de "no envolver" (`white-space: nowrap`/`pre`) y/o ancho de caja de texto configurable. Diagnosticar y diseñar (brainstorming antes de implementar).
 
+### UX / atajos de teclado (pedido 2026-06-24)
+- [ ] Tecla espacio = play/pause de la previsualización. Atajo global de teclado en `CreditPreview` (o nivel page) que togglea `setPlaying`, ignorando el evento cuando el foco está en un input/textarea/contenteditable para no romper la escritura.
+
 ### Overrides por item (pedidos 2026-06-24)
 - [~] Auditoría: hacer overridable por item todo lo global razonable. Hechos 2026-06-24: animación (type/duration/tunables) y peso de fuente (ver TODO de fade). YA estaban: alineación, negrita/cursiva/mayúsculas, tamaño, color, fuente, interletraje, interlineado, blur, pausa (aparición), spacer, divider, ancho de imagen. PENDIENTE (no elegido en esta tanda): velocidad de tecleo (`typewriterSpeed`) por item; sombra de texto por item (grupo: on/color/blur/x/y/opacidad). NO aplica por item (global por naturaleza): modo, fondo/gradiente, vignette, scroll (velocidad/dirección/pausa), paddingX, itemSpacing, escenario (tamaño/ratio), bucle, márgenes seguros.
 
