@@ -46,6 +46,7 @@ import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
 import { TimelineBar } from "./TimelineBar"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
 import { itemProgressBounds } from "@/lib/credit/timeline"
+import { isInteractiveTarget } from "@/lib/credit/keyboard"
 import { ExportDialog } from "./ExportDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -127,6 +128,20 @@ export function CreditPreview() {
   // Auto-start playing on mount
   React.useEffect(() => {
     setPlaying(true)
+  }, [setPlaying])
+
+  // Spacebar toggles play/pause, except while typing in a field or focusing a control.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" && e.key !== " ") return
+      if (isInteractiveTarget(e.target)) return
+      e.preventDefault()
+      const next = !useCreditStore.getState().isPlaying
+      setPlaying(next)
+      if (next) setManualSeek(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
   }, [setPlaying])
 
   // Fullscreen change detection
