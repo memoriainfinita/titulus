@@ -225,6 +225,23 @@ describe("project import/export", () => {
     expect(it0.imageWidth).toBe(80)
     expect(useCreditStore.getState().config.imageWidth).toBe(DEFAULT_CONFIG.imageWidth)
   })
+
+  it("preserves new config keys and per-item wrap overrides through export then import", () => {
+    useCreditStore.getState().updateConfig({ respectSafeMargins: true, noWrap: true, textBoxWidth: 70 })
+    useCreditStore.setState({
+      items: [{ id: "a", type: "name", text: "Ada", noWrap: true, textBoxWidth: 50 }],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    expect(useCreditStore.getState().importProject(json)).toBe(true)
+
+    const { config, items } = useCreditStore.getState()
+    expect(config.respectSafeMargins).toBe(true)
+    expect(config.noWrap).toBe(true)
+    expect(config.textBoxWidth).toBe(70)
+    expect(items[0].noWrap).toBe(true)
+    expect(items[0].textBoxWidth).toBe(50)
+  })
 })
 
 describe("mergePersistedConfig", () => {
