@@ -325,6 +325,23 @@ export function ConfigPanel() {
                 step={5}
               />
             </Field>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">No envolver texto (respeta solo saltos manuales)</Label>
+              <Switch
+                checked={config.noWrap}
+                onCheckedChange={(v) => updateConfig({ noWrap: v })}
+              />
+            </div>
+            <Field label="Ancho de caja de texto" hint={`${config.textBoxWidth}%`}>
+              <Slider
+                value={[config.textBoxWidth]}
+                onValueChange={(v) => updateConfig({ textBoxWidth: v[0] })}
+                min={10}
+                max={100}
+                step={1}
+              />
+            </Field>
           </Section>
 
           {/* COLORS */}
