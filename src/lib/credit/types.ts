@@ -39,6 +39,15 @@ export interface CreditItem {
   pauseOverride?: number
   // Text blur (px). undefined = inherit config.textBlur. Negative values are ignored.
   textBlur?: number
+  // Text shadow overrides. undefined = inherit the global counterpart.
+  useTextShadow?: boolean // tri-state: undefined = inherit, true = force on, false = force off
+  textShadowColor?: string // empty/undefined = inherit config.textShadowColor
+  textShadowBlur?: number // px; undefined = inherit (0 allowed)
+  textShadowX?: number // px; undefined = inherit (0 and negatives allowed)
+  textShadowY?: number // px; undefined = inherit (0 and negatives allowed)
+  textShadowOpacity?: number // 0-1; undefined = inherit
+  // Typewriter speed (ms per character, appearing mode). undefined/<=0 = inherit config.typewriterSpeed.
+  typewriterSpeed?: number
   // Spacer override: alto en px. undefined = hereda config.spacerHeight.
   spacerHeight?: number
   // Divider overrides. undefined = hereda el config.divider* correspondiente.

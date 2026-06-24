@@ -156,6 +156,20 @@ function AnimationOverrides({
           <span className="text-[10px] text-muted-foreground">vacío = global</span>
         </div>
       )}
+      {effectiveType === "typewriter" && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Vel. tecleo</span>
+          <Input
+            type="number" min={1} step={1}
+            value={item.typewriterSpeed ?? ""}
+            placeholder={String(config.typewriterSpeed)}
+            onChange={numHandler("typewriterSpeed", 1)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 w-24 text-sm"
+          />
+          <span className="text-[10px] text-muted-foreground">ms · vacío = global</span>
+        </div>
+      )}
       {effectiveType.startsWith("slide") && (
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Distancia</span>
@@ -205,6 +219,135 @@ function AnimationOverrides({
               onClick={(e) => e.stopPropagation()}
               className="h-7 w-24 text-sm"
             />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ShadowOverrides({
+  item,
+  config,
+  updateItem,
+}: {
+  item: CreditItem
+  config: CreditConfig
+  updateItem: (id: string, patch: Partial<CreditItem>) => void
+}) {
+  const effectiveOn = item.useTextShadow ?? config.useTextShadow
+  const numHandler =
+    (key: keyof CreditItem, min?: number, max?: number) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value
+      if (raw === "") {
+        updateItem(item.id, { [key]: undefined } as Partial<CreditItem>)
+        return
+      }
+      const n = Number(raw)
+      if (Number.isNaN(n)) return
+      let v = n
+      if (min != null) v = Math.max(min, v)
+      if (max != null) v = Math.min(max, v)
+      updateItem(item.id, { [key]: v } as Partial<CreditItem>)
+    }
+  const effectiveColor = item.textShadowColor?.trim() ? item.textShadowColor : config.textShadowColor
+  return (
+    <div className="border-t pt-2 space-y-2">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Sombra (este item)</div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Estado</span>
+        <Select
+          value={item.useTextShadow === undefined ? "__global" : item.useTextShadow ? "on" : "off"}
+          onValueChange={(v) =>
+            updateItem(item.id, {
+              useTextShadow: v === "__global" ? undefined : v === "on",
+            })
+          }
+        >
+          <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__global">(global)</SelectItem>
+            <SelectItem value="on">Con sombra</SelectItem>
+            <SelectItem value="off">Sin sombra</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {effectiveOn && (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Color</span>
+            <div className="relative w-7 h-7 rounded-md border overflow-hidden shrink-0">
+              <input
+                type="color"
+                value={effectiveColor}
+                onChange={(e) => updateItem(item.id, { textShadowColor: e.target.value })}
+                className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+              />
+              <div className="w-full h-full" style={{ backgroundColor: effectiveColor }} />
+            </div>
+            <Input
+              value={item.textShadowColor ?? ""}
+              placeholder="global"
+              onChange={(e) => {
+                const raw = e.target.value
+                updateItem(item.id, { textShadowColor: raw === "" ? undefined : raw })
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 flex-1 font-mono text-xs"
+            />
+            {item.textShadowColor != null && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]"
+                onClick={(e) => { e.stopPropagation(); updateItem(item.id, { textShadowColor: undefined }) }}>
+                global
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Desenfoque</span>
+            <Input
+              type="number" min={0} step={1}
+              value={item.textShadowBlur ?? ""}
+              placeholder={String(config.textShadowBlur)}
+              onChange={numHandler("textShadowBlur", 0)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+            <span className="text-[10px] text-muted-foreground">vacío = global</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Offset X</span>
+            <Input
+              type="number" step={1}
+              value={item.textShadowX ?? ""}
+              placeholder={String(config.textShadowX)}
+              onChange={numHandler("textShadowX")}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Offset Y</span>
+            <Input
+              type="number" step={1}
+              value={item.textShadowY ?? ""}
+              placeholder={String(config.textShadowY)}
+              onChange={numHandler("textShadowY")}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Opacidad</span>
+            <Input
+              type="number" min={0} max={1} step={0.05}
+              value={item.textShadowOpacity ?? ""}
+              placeholder={String(config.textShadowOpacity)}
+              onChange={numHandler("textShadowOpacity", 0, 1)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 w-24 text-sm"
+            />
+            <span className="text-[10px] text-muted-foreground">0-1 · vacío = global</span>
           </div>
         </>
       )}
@@ -615,6 +758,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               />
             </div>
           </div>
+          <ShadowOverrides item={item} config={config} updateItem={updateItem} />
           {config.mode === "appearing" && (
             <AnimationOverrides item={item} config={config} updateItem={updateItem} />
           )}

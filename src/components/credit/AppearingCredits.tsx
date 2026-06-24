@@ -9,6 +9,7 @@ import {
   resolveAnimationType,
   resolveAnimationDuration,
   resolveAnimationTunables,
+  resolveTypewriterSpeed,
   AnimationTunables,
 } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -109,7 +110,7 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
   const fontWeight = resolveFontWeight(item, config)
-  const shadow = resolveTextShadow(config)
+  const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
   return (
     <div
@@ -195,7 +196,7 @@ export function AppearingCredits({
     const foundItem = visibleItems[foundIdx]
     if (foundItem && resolveAnimationType(foundItem, config) === "typewriter") {
       const text = foundItem.text || ""
-      const typingDuration = Math.max(2, text.length * (config.typewriterSpeed / 1000))
+      const typingDuration = Math.max(2, text.length * (resolveTypewriterSpeed(foundItem, config) / 1000))
       const charsToShow = Math.min(text.length, Math.floor((timeIntoItem / typingDuration) * text.length))
       setTypedText(text.slice(0, charsToShow))
     } else {
@@ -253,7 +254,7 @@ export function AppearingCredits({
       i += 1
       setTypedText(text.slice(0, i))
       if (i >= text.length) clearInterval(interval)
-    }, config.typewriterSpeed)
+    }, resolveTypewriterSpeed(item, config))
     return () => clearInterval(interval)
   }, [isPlaying, currentIndex, visibleItems, config.animationType, config.typewriterSpeed, manualProgress])
 
