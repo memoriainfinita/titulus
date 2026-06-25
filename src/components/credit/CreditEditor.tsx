@@ -76,7 +76,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   isSelected: boolean
   onSelect: () => void
 }) {
-  const { removeItem, duplicateItem, moveItem, reorderItems, items, config } = useCreditStore()
+  const { removeItem, duplicateItem, moveItem, reorderItems, items, config, requestSeek } = useCreditStore()
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
   const isLast = index === items.length - 1
@@ -90,6 +90,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
         dragOver && "border-primary border-dashed",
       )}
       onClick={onSelect}
+      onDoubleClick={() => requestSeek(item.id)}
       onDragOver={(e) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = "move"

@@ -45,6 +45,7 @@ import { ScrollCredits } from "./ScrollCredits"
 import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
 import { TimelineBar } from "./TimelineBar"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
+import { scrollProgressForItem } from "@/lib/credit/scroll"
 import { itemProgressBounds } from "@/lib/credit/timeline"
 import { isInteractiveTarget } from "@/lib/credit/keyboard"
 import { ExportDialog } from "./ExportDialog"
@@ -82,6 +83,14 @@ export function CreditPreview() {
   const [manualSeek, setManualSeek] = React.useState<number | null>(null)
   const [currentItemIndex, setCurrentItemIndex] = React.useState(0)
 
+  // Scroll geometry reported by the visible ScrollCredits (for seek + active item).
+  const scrollLayoutRef = React.useRef<{
+    offsets: { id: string; top: number; height: number }[]
+    contentHeight: number
+    containerHeight: number
+  } | null>(null)
+  const seekTarget = useCreditStore((s) => s.seekTarget)
+
   const navBounds = React.useMemo(
     () => itemProgressBounds(getVisibleItems(items).map((i) => getAppearItemDuration(i, config))),
     [items, config],
@@ -96,6 +105,28 @@ export function CreditPreview() {
     setManualSeek((b.start + b.end) / 2)
     setCurrentItemIndex(idx)
   }
+
+  // Double-click on a list row requests a seek to that item.
+  React.useEffect(() => {
+    if (!seekTarget) return
+    if (config.mode === "appearing") {
+      const visible = getVisibleItems(items)
+      const idx = visible.findIndex((i) => i.id === seekTarget.id)
+      if (idx >= 0) seekToItem(idx) // no-op si el item no es visible (spacer/divider)
+      return
+    }
+    // scroll: usar la geometría real medida
+    const layout = scrollLayoutRef.current
+    if (!layout) return
+    const off = layout.offsets.find((o) => o.id === seekTarget.id)
+    if (!off) return
+    const p = scrollProgressForItem(
+      off.top, off.height, layout.contentHeight, layout.containerHeight,
+      config.scrollDirection, 0.5,
+    )
+    setPlaying(false)
+    setManualSeek(p)
+  }, [seekTarget]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calculate scale to fit stage inside container
   React.useEffect(() => {
@@ -255,6 +286,7 @@ export function CreditPreview() {
               restartKey={previewKey}
               manualProgress={manualSeek}
               onProgressChange={(p) => { progressRef.current = p }}
+              onLayoutChange={(l) => { scrollLayoutRef.current = l }}
             />
           ) : (
             <AppearingCredits
