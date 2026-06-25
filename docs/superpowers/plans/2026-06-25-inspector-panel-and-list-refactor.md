@@ -310,7 +310,7 @@ En `ConfigPanel.tsx`, dentro de la `Section title="Modo de crédito"` (197-248),
 
 ```tsx
           {/* STAGE */}
-          <Section title="Escenario" icon={Layout}>
+          <Section title="Escenario" icon={Monitor}>
             <Field label="Formato del escenario">
               {/* (pegar aquí el <Select> de stageRatio cortado de "Modo de crédito") */}
             </Field>
@@ -342,7 +342,7 @@ Crear DESPUÉS de "Diseño" dos secciones nuevas:
           </Section>
 ```
 
-Añadir los iconos a los imports de `lucide-react` en ConfigPanel.tsx: `Minus`, `Image as ImageIcon`.
+Añadir los iconos a los imports de `lucide-react` en ConfigPanel.tsx: `Minus`, `Image as ImageIcon`, `Monitor` (este último para "Escenario", distinto del `Layout` de "Diseño").
 
 - [ ] **Step 3: Verificar**
 
@@ -401,14 +401,14 @@ Los handlers (`toggleBold`, `toggleItalic`, `toggleUppercase`, `setAlign`) y los
 - [ ] **Step 2: Convertir ConfigPanel en InspectorPanel + GlobalConfig**
 
 En `ConfigPanel.tsx`:
-- Renombrar la función `ConfigPanel` a `GlobalConfig` (mismo cuerpo).
+- Renombrar la función `ConfigPanel` a `GlobalConfig` (su cabecera se elimina, ver abajo).
 - Añadir:
 
 ```tsx
 import { ItemInspector } from "./ItemInspector"
 
 export function InspectorPanel() {
-  const { selectedItemId, items } = useCreditStore()
+  const { selectedItemId, items, resetConfig } = useCreditStore()
   const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined
   const [showGlobal, setShowGlobal] = React.useState(false)
 
@@ -423,11 +423,32 @@ export function InspectorPanel() {
           <Settings2 className="h-4 w-4" />
           {viewingItem ? CREDIT_TYPE_LABELS[item.type] : "Configuración"}
         </h3>
-        {item && (
+        {item ? (
           <Button size="sm" variant="ghost" className="h-7 text-xs"
             onClick={() => setShowGlobal((v) => !v)}>
             {showGlobal ? "Ver item" : "Ver global"}
           </Button>
+        ) : (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 text-xs">
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Reset
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
       {viewingItem ? (
@@ -442,11 +463,11 @@ export function InspectorPanel() {
 }
 ```
 
-Importar `CREDIT_TYPE_LABELS` de `@/lib/credit/types`. `GlobalConfig` ya no necesita su propia cabecera "Configuración" con el botón Reset: mantenerla DENTRO de `GlobalConfig` (el Reset sigue siendo de la global), pero quitar su `<h3>Configuración</h3>` duplicado dejando solo el botón Reset, o conservarlo (no rompe). Recomendado: mantener el Reset en `GlobalConfig` y dejar el título de la global en su sitio; la cabecera de `InspectorPanel` muestra el contexto.
+Una sola cabecera, la de `InspectorPanel`. En `GlobalConfig` (antes `ConfigPanel`) BORRAR su `<div>` de cabecera con `<h3>Configuración</h3>` + el `AlertDialog` de Reset (ConfigPanel.tsx:167-192) y el wrapper exterior `<div className="flex flex-col h-full">`: `GlobalConfig` pasa a devolver SOLO la `<ScrollArea className="flex-1 min-h-0">` con las secciones. El wrapper `flex flex-col h-full` ahora lo aporta `InspectorPanel`, y el Reset vive en su cabecera (solo en vista global). Importar `CREDIT_TYPE_LABELS` de `@/lib/credit/types`. `AlertDialog*`, `Button`, `RotateCcw`, `Settings2`, `ScrollArea` ya están importados en ConfigPanel.tsx.
 
 - [ ] **Step 3: Adelgazar ItemRow en CreditEditor**
 
-En `CreditEditor.tsx`, BORRAR de `ItemRow` los cuatro bloques expandibles (509-945): el panel de texto, el de spacer, el de divider y el de image. BORRAR los componentes `AnimationOverrides` y `ShadowOverrides` (movidos en Step 1) y sus imports ahora sin uso. La fila conserva: grip draggable, icono, label de tipo, badges (B/I/AA/align/pausa), preview de texto/descriptor, y los botones de acción (mover/duplicar/borrar). `isSelected` solo cambia el estilo del borde (ya existe en 378-382). Mantener `onClick={onSelect}` y los handlers de drag.
+En `CreditEditor.tsx`, BORRAR de `ItemRow` los cuatro bloques expandibles (509-945): el panel de texto, el de spacer, el de divider y el de image. BORRAR los componentes `AnimationOverrides` y `ShadowOverrides` (movidos en Step 1) y sus imports ahora sin uso. La fila conserva: grip draggable, icono, label de tipo, badges (B/I/AA/align/pausa), preview de texto/descriptor, y los botones de acción (mover/duplicar/borrar). `isSelected` solo cambia el estilo del borde (ya existe en 378-382). Mantener `onClick={onSelect}` y los handlers de drag. BORRAR también los handlers locales que quedan sin uso al quitar el panel de texto: `toggleBold`, `toggleItalic`, `toggleUppercase`, `setAlign` (CreditEditor.tsx:370-374).
 
 Limpiar imports de `CreditEditor.tsx` que queden sin uso (p. ej. `Input`, `Textarea`, `Switch`, `Select*`, `Bold`, `Italic`, iconos de alineación, `getFontSize`, `resolveDivider`, `resolveAnimationType`, `CreditConfig`, `DividerStyle`, `AnimationType`). Verificar con tsc cuáles sobran.
 
@@ -540,7 +561,7 @@ Reemplazar el `.map` de items (CreditEditor.tsx:1027-1035) por una versión con 
                 item={item}
                 index={idx}
                 isSelected={selectedItemId === item.id}
-                onSelect={() => selectItem(item.id)}
+                onSelect={() => selectItem(selectedItemId === item.id ? null : item.id)}
               />
             </React.Fragment>
           ))}
@@ -548,6 +569,8 @@ Reemplazar el `.map` de items (CreditEditor.tsx:1027-1035) por una versión con 
 ```
 
 (`InsertGap index={idx}` inserta ANTES de la fila idx → cubre "antes del primero" con idx 0; el final cubre "después del último".)
+
+`onSelect` ahora TOGGLEA: clic en la fila ya seleccionada la deselecciona (`selectItem(null)`) → el inspector vuelve a global. `selectedItemId` y `selectItem` ya se desestructuran en `CreditEditor` (CreditEditor.tsx:951).
 
 - [ ] **Step 3: Verificar**
 
@@ -612,10 +635,14 @@ Ampliar el `measure()` del effect (149-154) para reportar el layout:
         setContentHeight(ch)
         setContainerHeight(cont)
         if (onLayoutChange) {
-          const offsets = items.map((it) => {
-            const el = itemEls.current.get(it.id)
-            return { id: it.id, top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
-          })
+          // Solo items con caja real: excluye la imagen sin src (altura 0), que
+          // si no podría marcarse "activa" un instante en el hueco.
+          const offsets = items
+            .map((it) => {
+              const el = itemEls.current.get(it.id)
+              return { id: it.id, top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
+            })
+            .filter((o) => o.height > 0)
           onLayoutChange({ offsets, contentHeight: ch, containerHeight: cont })
         }
       }
@@ -703,6 +730,8 @@ En `CreditPreview.tsx`, tomar `seekTarget` del store y añadir un effect:
 
 Importar `scrollProgressForItem` de `@/lib/credit/scroll`. (`getVisibleItems` ya está importado.)
 
+Comportamiento esperado en un caso límite: si en scroll se hace doble clic antes de la primera medición (`scrollLayoutRef.current === null`, p. ej. justo tras cambiar a scroll), el seek es no-op silencioso. La medición dispara enseguida vía `ResizeObserver`; un segundo doble clic ya funciona. Aceptado, no se mitiga.
+
 - [ ] **Step 4: Verificar**
 
 Run: `pnpm exec tsc --noEmit && pnpm build`
@@ -746,18 +775,24 @@ En `CreditPreview.tsx`, tomar `setActiveItem` del store. Añadir un effect que m
 
 - [ ] **Step 2: Producir activeItemId en scroll (RAF sobre geometría real)**
 
-Añadir un effect con su propio `requestAnimationFrame` que, en modo scroll, lee `progressRef` + `scrollLayoutRef` y calcula el item activo, escribiendo en la store solo al cambiar:
+Añadir un effect con su propio `requestAnimationFrame` que, en modo scroll, calcula el item activo y escribe en la store solo al cambiar. Fuente de progreso: durante el arrastre del desplazador, `ScrollCredits` NO emite `onProgressChange` (ScrollCredits.tsx:218-221 lo saltan cuando `manualProgress !== null`), así que `progressRef` se queda obsoleto. Por eso el RAF prioriza el valor de scrub en vivo. `manualSeek` es state, y el closure del RAF no lo ve actualizado, así que se espeja en un ref:
 
 ```tsx
+  // Espejo de manualSeek para leerlo desde el RAF (el closure no ve el state nuevo).
+  const manualSeekRef = React.useRef<number | null>(manualSeek)
+  React.useEffect(() => { manualSeekRef.current = manualSeek }, [manualSeek])
+
   React.useEffect(() => {
     if (config.mode !== "scroll") return
     let raf: number
     const tick = () => {
       const layout = scrollLayoutRef.current
       if (layout && layout.offsets.length > 0) {
+        // Scrub en vivo manda; si no, el progreso de reproducción.
+        const p = manualSeekRef.current !== null ? manualSeekRef.current : progressRef.current
         const idx = activeItemIndexAtProgress(
           layout.offsets, layout.contentHeight, layout.containerHeight,
-          config.scrollDirection, progressRef.current, 0.5,
+          config.scrollDirection, p, 0.5,
         )
         const id = idx >= 0 ? layout.offsets[idx].id : null
         setActiveItem(id) // no-op interno si no cambia
@@ -769,7 +804,7 @@ Añadir un effect con su propio `requestAnimationFrame` que, en modo scroll, lee
   }, [config.mode, config.scrollDirection, setActiveItem])
 ```
 
-Importar `activeItemIndexAtProgress` de `@/lib/credit/scroll`. (`progressRef` ya se actualiza vía `onProgressChange` en ambos modos, 257/266.)
+Importar `activeItemIndexAtProgress` de `@/lib/credit/scroll`. Así el resalte concuerda con el escenario tanto reproduciendo como arrastrando el desplazador.
 
 - [ ] **Step 3: Consumir activeItemId en la lista**
 
@@ -779,7 +814,7 @@ En `CreditEditor.tsx` `ItemRow`, tomar `activeItemId` del store y aplicar un ind
         isActive && "ring-1 ring-amber-400/70",
 ```
 
-con `const isActive = useCreditStore((s) => s.activeItemId) === item.id`. (Selección = `border-primary ring-1 ring-primary` ya existente; activo = anillo ámbar, visualmente distinto y combinable.)
+con `const isActive = useCreditStore((s) => s.activeItemId === item.id)`. El selector devuelve un booleano para que SOLO re-rendericen la fila que entra y la que sale del estado activo (no las 72), no la lista entera. (Selección = `border-primary ring-1 ring-primary` ya existente; activo = anillo ámbar, visualmente distinto y combinable.)
 
 - [ ] **Step 4: Verificar**
 
