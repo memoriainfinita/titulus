@@ -62,3 +62,49 @@ export function getScrollTranslateY(
     ? containerHeight - progress * totalDistance
     : -contentHeight + progress * totalDistance
 }
+
+// Progress (0..1) that places the item's center on the reference line.
+// refFraction is the fraction of containerHeight for the line (0.5 = center).
+export function scrollProgressForItem(
+  itemTop: number,
+  itemHeight: number,
+  contentHeight: number,
+  containerHeight: number,
+  direction: ScrollDirection,
+  refFraction: number,
+): number {
+  const total = getScrollTotalDistance(contentHeight, containerHeight)
+  if (total <= 0) return 0
+  const ref = refFraction * containerHeight
+  const center = itemTop + itemHeight / 2
+  // up:   translateY = containerHeight - p*total ; screenCenter = translateY + center = ref
+  // down: translateY = -contentHeight + p*total  ; screenCenter = translateY + center = ref
+  const p =
+    direction === "up"
+      ? (containerHeight + center - ref) / total
+      : (ref + contentHeight - center) / total
+  return Math.min(1, Math.max(0, p))
+}
+
+// Index of the item currently at/above the reference line: the last item whose
+// on-screen top edge has passed the line. Monotonic in progress (no flicker).
+// Returns -1 for empty input; clamps to the first item before anything crosses.
+export function activeItemIndexAtProgress(
+  offsets: { top: number; height: number }[],
+  contentHeight: number,
+  containerHeight: number,
+  direction: ScrollDirection,
+  progress: number,
+  refFraction: number,
+): number {
+  if (offsets.length === 0) return -1
+  const translateY = getScrollTranslateY(contentHeight, containerHeight, direction, progress)
+  const ref = refFraction * containerHeight
+  let active = 0
+  for (let i = 0; i < offsets.length; i++) {
+    const screenTop = translateY + offsets[i].top
+    if (screenTop <= ref) active = i
+    else break
+  }
+  return active
+}
