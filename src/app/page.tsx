@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/resizable"
 import { CreditEditor } from "@/components/credit/CreditEditor"
 import { CreditPreview } from "@/components/credit/CreditPreview"
-import { ConfigPanel, PresetBar } from "@/components/credit/ConfigPanel"
+import { InspectorPanel, PresetBar } from "@/components/credit/ConfigPanel"
 import { FontLoader } from "@/components/credit/FontManager"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Film, Github, Sparkles } from "lucide-react"
@@ -70,7 +70,7 @@ export default function Home() {
 
           {/* Right: config */}
           <ResizablePanel defaultSize={30} minSize={22} maxSize={42} className="bg-card">
-            <ConfigPanel />
+            <InspectorPanel />
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
