@@ -22,9 +22,10 @@ import {
   Monitor,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle } from "@/lib/credit/types"
+import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle, CREDIT_TYPE_LABELS } from "@/lib/credit/types"
 import { DEFAULT_CONFIG } from "@/lib/credit/types"
 import { FontManager } from "./FontManager"
+import { ItemInspector } from "./ItemInspector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -162,38 +163,65 @@ const ANIMATIONS: { value: AnimationType; label: string }[] = [
   { value: "typewriter", label: "Máquina de escribir" },
 ]
 
-export function ConfigPanel() {
-  const { config, updateConfig, resetConfig, fonts } = useCreditStore()
+export function InspectorPanel() {
+  const { selectedItemId, items, resetConfig } = useCreditStore()
+  const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined
+  const [showGlobal, setShowGlobal] = React.useState(false)
 
+  // Al cambiar de item, volver a la vista de item.
+  React.useEffect(() => { setShowGlobal(false) }, [selectedItemId])
+
+  const viewingItem = item && !showGlobal
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-3 border-b">
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <Settings2 className="h-4 w-4" />
-          Configuración
+          {viewingItem ? CREDIT_TYPE_LABELS[item.type] : "Configuración"}
         </h3>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-7 text-xs">
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
-              Reset
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {item ? (
+          <Button size="sm" variant="ghost" className="h-7 text-xs"
+            onClick={() => setShowGlobal((v) => !v)}>
+            {showGlobal ? "Ver item" : "Ver global"}
+          </Button>
+        ) : (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 text-xs">
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Reset
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
+      {viewingItem ? (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-3"><ItemInspector item={item} /></div>
+        </ScrollArea>
+      ) : (
+        <GlobalConfig />
+      )}
+    </div>
+  )
+}
 
+function GlobalConfig() {
+  const { config, updateConfig, fonts } = useCreditStore()
+
+  return (
       <ScrollArea className="flex-1 min-h-0">
         <div>
           {/* STAGE */}
@@ -772,7 +800,6 @@ export function ConfigPanel() {
           )}
         </div>
       </ScrollArea>
-    </div>
   )
 }
 
