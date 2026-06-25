@@ -45,7 +45,7 @@ import { ScrollCredits } from "./ScrollCredits"
 import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
 import { TimelineBar } from "./TimelineBar"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
-import { scrollProgressForItem } from "@/lib/credit/scroll"
+import { scrollProgressForItem, activeItemIndexAtProgress } from "@/lib/credit/scroll"
 import { itemProgressBounds } from "@/lib/credit/timeline"
 import { isInteractiveTarget } from "@/lib/credit/keyboard"
 import { ExportDialog } from "./ExportDialog"
@@ -90,6 +90,7 @@ export function CreditPreview() {
     containerHeight: number
   } | null>(null)
   const seekTarget = useCreditStore((s) => s.seekTarget)
+  const setActiveItem = useCreditStore((s) => s.setActiveItem)
 
   const navBounds = React.useMemo(
     () => itemProgressBounds(getVisibleItems(items).map((i) => getAppearItemDuration(i, config))),
@@ -127,6 +128,39 @@ export function CreditPreview() {
     setPlaying(false)
     setManualSeek(p)
   }, [seekTarget]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Active item in appearing mode: map the visible index to its id.
+  React.useEffect(() => {
+    if (config.mode !== "appearing") return
+    const visible = getVisibleItems(items)
+    setActiveItem(visible[currentItemIndex]?.id ?? null)
+  }, [config.mode, items, currentItemIndex, setActiveItem])
+
+  // Active item in scroll mode: own RAF over the real geometry. During scrubbing
+  // ScrollCredits doesn't emit onProgressChange, so prefer the live scrub value;
+  // manualSeek is state, invisible to the RAF closure, so mirror it in a ref.
+  const manualSeekRef = React.useRef<number | null>(manualSeek)
+  React.useEffect(() => { manualSeekRef.current = manualSeek }, [manualSeek])
+
+  React.useEffect(() => {
+    if (config.mode !== "scroll") return
+    let raf: number
+    const tick = () => {
+      const layout = scrollLayoutRef.current
+      if (layout && layout.offsets.length > 0) {
+        const p = manualSeekRef.current !== null ? manualSeekRef.current : progressRef.current
+        const idx = activeItemIndexAtProgress(
+          layout.offsets, layout.contentHeight, layout.containerHeight,
+          config.scrollDirection, p, 0.5,
+        )
+        const id = idx >= 0 ? layout.offsets[idx].id : null
+        setActiveItem(id) // no-op interno si no cambia
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [config.mode, config.scrollDirection, setActiveItem])
 
   // Calculate scale to fit stage inside container
   React.useEffect(() => {

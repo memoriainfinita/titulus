@@ -77,6 +77,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   onSelect: () => void
 }) {
   const { removeItem, duplicateItem, moveItem, reorderItems, items, config, requestSeek } = useCreditStore()
+  const isActive = useCreditStore((s) => s.activeItemId === item.id)
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
   const isLast = index === items.length - 1
@@ -87,6 +88,7 @@ function ItemRow({ item, index, isSelected, onSelect }: {
       className={cn(
         "group rounded-md border bg-card transition-colors cursor-pointer",
         isSelected ? "border-primary ring-1 ring-primary" : "hover:bg-accent/40",
+        isActive && "ring-1 ring-amber-400/70",
         dragOver && "border-primary border-dashed",
       )}
       onClick={onSelect}
