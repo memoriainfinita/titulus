@@ -4,7 +4,42 @@ import {
   getScrollDurationSec,
   getScrollTranslateY,
   stepScrollProgress,
+  scrollProgressForItem,
+  activeItemIndexAtProgress,
 } from "./scroll"
+
+describe("scrollProgressForItem / activeItemIndexAtProgress", () => {
+  // Geometría: contentHeight 1000, containerHeight 200, total = 1200, ref center = 100.
+  it("scrollProgressForItem centra el item en la línea de referencia (up)", () => {
+    // item top=400 height=100 -> center 450. up: p=(200+450-100)/1200
+    const p = scrollProgressForItem(400, 100, 1000, 200, "up", 0.5)
+    expect(p).toBeCloseTo((200 + 450 - 100) / 1200, 5)
+  })
+
+  it("scrollProgressForItem clamp a [0,1]", () => {
+    expect(scrollProgressForItem(-9999, 0, 1000, 200, "up", 0.5)).toBe(0)
+    expect(scrollProgressForItem(9999, 0, 1000, 200, "up", 0.5)).toBe(1)
+  })
+
+  it("activeItemIndexAtProgress: -1 si no hay items", () => {
+    expect(activeItemIndexAtProgress([], 1000, 200, "up", 0.5, 0.5)).toBe(-1)
+  })
+
+  it("activeItemIndexAtProgress: item cuyo top ya pasó la referencia (up)", () => {
+    const offsets = [
+      { top: 0, height: 100 },
+      { top: 100, height: 100 },
+      { top: 200, height: 100 },
+    ]
+    const p = scrollProgressForItem(100, 100, 1000, 200, "up", 0.5)
+    expect(activeItemIndexAtProgress(offsets, 1000, 200, "up", p, 0.5)).toBe(1)
+  })
+
+  it("activeItemIndexAtProgress: antes del primero devuelve 0", () => {
+    const offsets = [{ top: 500, height: 100 }, { top: 700, height: 100 }]
+    expect(activeItemIndexAtProgress(offsets, 1000, 200, "up", 0, 0.5)).toBe(0)
+  })
+})
 
 describe("getScrollTotalDistance", () => {
   it("sums content and container height", () => {
