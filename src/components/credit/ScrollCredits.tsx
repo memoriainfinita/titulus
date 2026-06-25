@@ -24,6 +24,13 @@ interface ScrollCreditsProps {
   onDurationChange?: (durationSec: number) => void
   // Reports current progress (0-1) during internal playback (for the timeline).
   onProgressChange?: (p: number) => void
+  // Reports per-item geometry (offsets) plus content/container heights, so the
+  // parent can map items to scroll progress (seek + active-item highlight).
+  onLayoutChange?: (layout: {
+    offsets: { id: string; top: number; height: number }[]
+    contentHeight: number
+    containerHeight: number
+  }) => void
 }
 
 // Build the inline style for an individual credit item
@@ -59,15 +66,17 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
 }
 
 // Render a single item, including dividers and spacers
-function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }) {
+const CreditLine = React.forwardRef<HTMLDivElement, { item: CreditItem; config: CreditConfig }>(
+  function CreditLine({ item, config }, ref) {
   if (item.type === "spacer") {
-    return <div style={{ height: `${resolveSpacerHeight(item, config)}px` }} aria-hidden />
+    return <div ref={ref} style={{ height: `${resolveSpacerHeight(item, config)}px` }} aria-hidden />
   }
   if (item.type === "image") {
-    if (!item.imageSrc) return null
+    if (!item.imageSrc) return <div ref={ref} aria-hidden />
     const align = resolveAlignment(item, config)
     return (
       <div
+        ref={ref}
         style={{
           padding: `0 ${config.paddingX}px`,
           width: "100%",
@@ -91,6 +100,7 @@ function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }
     const d = resolveDivider(item, config)
     return (
       <div
+        ref={ref}
         style={{
           padding: `0 ${config.paddingX}px`,
           width: "100%",
@@ -114,6 +124,7 @@ function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }
   }
   return (
     <div
+      ref={ref}
       style={{
         ...getItemStyle(item, config),
         marginTop: `${config.itemSpacing}px`,
@@ -123,7 +134,7 @@ function CreditLine({ item, config }: { item: CreditItem; config: CreditConfig }
       {item.text || "\u00A0"}
     </div>
   )
-}
+})
 
 export function ScrollCredits({
   items,
@@ -133,9 +144,11 @@ export function ScrollCredits({
   manualProgress = null,
   onDurationChange,
   onProgressChange,
+  onLayoutChange,
 }: ScrollCreditsProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
+  const itemEls = React.useRef<Map<string, HTMLDivElement>>(new Map())
   const [contentHeight, setContentHeight] = React.useState(0)
   const [containerHeight, setContainerHeight] = React.useState(0)
   const [internalProgress, setInternalProgress] = React.useState(0)
@@ -148,8 +161,21 @@ export function ScrollCredits({
     if (!contentRef.current || !containerRef.current) return
     const measure = () => {
       if (contentRef.current && containerRef.current) {
-        setContentHeight(contentRef.current.scrollHeight)
-        setContainerHeight(containerRef.current.clientHeight)
+        const ch = contentRef.current.scrollHeight
+        const cont = containerRef.current.clientHeight
+        setContentHeight(ch)
+        setContainerHeight(cont)
+        if (onLayoutChange) {
+          // Only items with a real box: excludes the src-less image (height 0),
+          // which could otherwise be flagged "active" for an instant in the gap.
+          const offsets = items
+            .map((it) => {
+              const el = itemEls.current.get(it.id)
+              return { id: it.id, top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
+            })
+            .filter((o) => o.height > 0)
+          onLayoutChange({ offsets, contentHeight: ch, containerHeight: cont })
+        }
       }
     }
     measure()
@@ -157,7 +183,7 @@ export function ScrollCredits({
     ro.observe(contentRef.current)
     ro.observe(containerRef.current)
     return () => ro.disconnect()
-  }, [items, config])
+  }, [items, config, onLayoutChange])
 
   // Reset progress on restart
   React.useEffect(() => {
@@ -289,7 +315,15 @@ export function ScrollCredits({
         }}
       >
         {items.map((item) => (
-          <CreditLine key={item.id} item={item} config={config} />
+          <CreditLine
+            key={item.id}
+            item={item}
+            config={config}
+            ref={(el) => {
+              if (el) itemEls.current.set(item.id, el)
+              else itemEls.current.delete(item.id)
+            }}
+          />
         ))}
       </div>
     </div>
