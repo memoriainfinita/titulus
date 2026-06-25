@@ -17,6 +17,9 @@ import {
   ArrowDown,
   Bookmark,
   X,
+  Minus,
+  Image as ImageIcon,
+  Monitor,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle } from "@/lib/credit/types"
@@ -193,6 +196,30 @@ export function ConfigPanel() {
 
       <ScrollArea className="flex-1 min-h-0">
         <div>
+          {/* STAGE */}
+          <Section title="Escenario" icon={Monitor}>
+            <Field label="Formato del escenario">
+              <Select
+                value={config.stageRatio}
+                onValueChange={(v) => {
+                  const ratio = STAGE_RATIOS.find((r) => r.value === v)
+                  if (ratio) updateConfig({ stageRatio: v as CreditConfig["stageRatio"], stageWidth: ratio.w, stageHeight: ratio.h })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGE_RATIOS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </Section>
+
           {/* MODE */}
           <Section title="Modo de crédito" icon={Sparkles}>
             <Field label="Estilo de presentación">
@@ -224,26 +251,6 @@ export function ConfigPanel() {
                   <div className="text-xs text-muted-foreground">Uno a uno con animación</div>
                 </button>
               </div>
-            </Field>
-            <Field label="Formato del escenario">
-              <Select
-                value={config.stageRatio}
-                onValueChange={(v) => {
-                  const ratio = STAGE_RATIOS.find((r) => r.value === v)
-                  if (ratio) updateConfig({ stageRatio: v as CreditConfig["stageRatio"], stageWidth: ratio.w, stageHeight: ratio.h })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAGE_RATIOS.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </Field>
           </Section>
 
@@ -543,7 +550,10 @@ export function ConfigPanel() {
                 step={5}
               />
             </Field>
-            <Separator />
+          </Section>
+
+          {/* SEPARATORS */}
+          <Section title="Separadores" icon={Minus}>
             <Field label="Alto del espacio" hint={`${config.spacerHeight}px`}>
               <Slider
                 value={[config.spacerHeight]}
@@ -611,7 +621,10 @@ export function ConfigPanel() {
                 />
               </Field>
             )}
-            <Separator />
+          </Section>
+
+          {/* IMAGES */}
+          <Section title="Imágenes" icon={ImageIcon}>
             <Field label="Ancho del logo" hint={`${config.imageWidth}%`}>
               <Slider
                 value={[config.imageWidth]}
