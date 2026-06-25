@@ -21,6 +21,8 @@ interface CreditState {
   fonts: FontItem[]
   userPresets: UserPreset[]
   selectedItemId: string | null
+  seekTarget: { id: string; nonce: number } | null
+  activeItemId: string | null
   projectName: string
 
   // UI state (not persisted)
@@ -37,6 +39,8 @@ interface CreditState {
   moveItem: (id: string, direction: "up" | "down") => void
   reorderItems: (fromId: string, toId: string) => void
   selectItem: (id: string | null) => void
+  requestSeek: (id: string) => void
+  setActiveItem: (id: string | null) => void
   clearItems: () => void
   loadItems: (items: CreditItem[]) => void
 
@@ -153,6 +157,8 @@ export const useCreditStore = create<CreditState>()(
       fonts: DEFAULT_FONTS,
       userPresets: [],
       selectedItemId: null,
+      seekTarget: null,
+      activeItemId: null,
       projectName: "Mi Proyecto de Créditos",
 
       isPlaying: false,
@@ -160,24 +166,20 @@ export const useCreditStore = create<CreditState>()(
       previewKey: 0,
       _hasHydrated: false,
 
-      addItem: (type, text = "", index) => {
-        const newItem: CreditItem = {
-          id: uuid(),
-          type,
-          text:
-            text ??
-            (type === "title"
-              ? "Nuevo título"
-              : type === "subtitle"
-                ? "Nuevo subtítulo"
-                : type === "name"
-                  ? "Nombre Apellido"
-                  : type === "role"
-                    ? "Cargo"
-                    : type === "description"
-                      ? "Descripción del rol o detalle"
-                      : ""),
-        }
+      addItem: (type, text, index) => {
+        const placeholder =
+          type === "title"
+            ? "Nuevo título"
+            : type === "subtitle"
+              ? "Nuevo subtítulo"
+              : type === "name"
+                ? "Nombre Apellido"
+                : type === "role"
+                  ? "Cargo"
+                  : type === "description"
+                    ? "Descripción del rol o detalle"
+                    : ""
+        const newItem: CreditItem = { id: uuid(), type, text: text ?? placeholder }
         set((state) => {
           if (index === undefined) {
             return { items: [...state.items, newItem], selectedItemId: newItem.id }
@@ -235,6 +237,12 @@ export const useCreditStore = create<CreditState>()(
         }),
 
       selectItem: (id) => set({ selectedItemId: id }),
+
+      requestSeek: (id) =>
+        set((s) => ({ seekTarget: { id, nonce: (s.seekTarget?.nonce ?? 0) + 1 } })),
+
+      setActiveItem: (id) =>
+        set((s) => (s.activeItemId === id ? s : { activeItemId: id })),
 
       clearItems: () => set({ items: [], selectedItemId: null }),
 

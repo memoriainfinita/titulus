@@ -275,6 +275,59 @@ describe("project import/export", () => {
   })
 })
 
+describe("seek/active channels and addItem placeholder", () => {
+  function freshStore() {
+    useCreditStore.setState({ items: [], selectedItemId: null, seekTarget: null, activeItemId: null })
+  }
+
+  it("addItem sin texto usa el placeholder del tipo y selecciona", () => {
+    freshStore()
+    useCreditStore.getState().addItem("title")
+    const { items, selectedItemId } = useCreditStore.getState()
+    expect(items).toHaveLength(1)
+    expect(items[0].text).toBe("Nuevo título")
+    expect(selectedItemId).toBe(items[0].id)
+  })
+
+  it("addItem con index inserta antes de esa posición", () => {
+    freshStore()
+    const s = useCreditStore.getState()
+    s.addItem("name") // idx0
+    s.addItem("role") // idx1
+    const firstId = useCreditStore.getState().items[0].id
+    useCreditStore.getState().addItem("subtitle", undefined, 1)
+    const items = useCreditStore.getState().items
+    expect(items.map((i) => i.type)).toEqual(["name", "subtitle", "role"])
+    expect(items[0].id).toBe(firstId)
+    expect(useCreditStore.getState().selectedItemId).toBe(items[1].id)
+  })
+
+  it("addItem con index 0 inserta al principio y con index=length al final", () => {
+    freshStore()
+    const s = useCreditStore.getState()
+    s.addItem("name")
+    s.addItem("name", undefined, 0)
+    s.addItem("role", undefined, useCreditStore.getState().items.length)
+    expect(useCreditStore.getState().items.map((i) => i.type)).toEqual(["name", "name", "role"])
+  })
+
+  it("requestSeek fija id e incrementa nonce", () => {
+    freshStore()
+    useCreditStore.getState().requestSeek("abc")
+    expect(useCreditStore.getState().seekTarget).toEqual({ id: "abc", nonce: 1 })
+    useCreditStore.getState().requestSeek("abc")
+    expect(useCreditStore.getState().seekTarget).toEqual({ id: "abc", nonce: 2 })
+  })
+
+  it("setActiveItem no crea objeto nuevo si no cambia", () => {
+    freshStore()
+    useCreditStore.getState().setActiveItem("x")
+    const before = useCreditStore.getState()
+    useCreditStore.getState().setActiveItem("x")
+    expect(useCreditStore.getState()).toBe(before)
+  })
+})
+
 describe("mergePersistedConfig", () => {
   it("backfills missing keys from DEFAULT_CONFIG", () => {
     const merged = mergePersistedConfig({ scrollSpeed: 99 } as Partial<typeof DEFAULT_CONFIG>)
