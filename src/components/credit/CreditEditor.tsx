@@ -219,6 +219,38 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   )
 }
 
+function InsertGap({ index }: { index: number }) {
+  const addItem = useCreditStore((s) => s.addItem)
+  return (
+    <div className="relative h-2 group/gap">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="Insertar aquí"
+            className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center opacity-0 group-hover/gap:opacity-100 transition-opacity"
+          >
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-background border rounded-full px-2 py-0.5">
+              <Plus className="h-3 w-3" /> Insertar
+            </span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          {ADD_MENU_TYPES.map((type) => {
+            const Icon = TYPE_ICONS[type]
+            return (
+              <DropdownMenuItem key={type} onClick={() => addItem(type, undefined, index)}>
+                <Icon className="h-4 w-4 mr-2" />
+                {CREDIT_TYPE_LABELS[type]}
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
 export function CreditEditor() {
   const { items, selectedItemId, selectItem, addItem, clearItems, loadItems } = useCreditStore()
   const [exampleOpen, setExampleOpen] = React.useState(false)
@@ -297,14 +329,17 @@ export function CreditEditor() {
             </div>
           )}
           {items.map((item, idx) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              index={idx}
-              isSelected={selectedItemId === item.id}
-              onSelect={() => selectItem(item.id)}
-            />
+            <React.Fragment key={item.id}>
+              <InsertGap index={idx} />
+              <ItemRow
+                item={item}
+                index={idx}
+                isSelected={selectedItemId === item.id}
+                onSelect={() => selectItem(selectedItemId === item.id ? null : item.id)}
+              />
+            </React.Fragment>
           ))}
+          {items.length > 0 && <InsertGap index={items.length} />}
         </div>
       </ScrollArea>
 
