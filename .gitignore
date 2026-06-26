@@ -17,6 +17,10 @@ node_modules
 /.next/
 /out/
 
+# portable build artifacts (build-portable.ps1)
+/credits-portable/
+/credits-portable.zip
+
 # production
 /build
 
