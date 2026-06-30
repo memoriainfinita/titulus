@@ -227,6 +227,72 @@ function LinesItem({
   )
 }
 
+// Typewriter render extracted from AppearingCredits: owns its live typing state.
+// Mounts only when the item is visible (mode="wait"), so typing starts at the
+// right moment. In manual/export mode it paints the parent-derived text statically.
+function TypewriterItem({
+  item,
+  config,
+  live,
+  isPlaying,
+  speed,
+  manualTypedText,
+}: {
+  item: CreditItem
+  config: CreditConfig
+  live: boolean
+  isPlaying: boolean
+  speed: number
+  manualTypedText: string
+}) {
+  const ts = resolveTextStyle(item, config)
+  const text = item.text || ""
+  const [typed, setTyped] = React.useState("")
+  React.useEffect(() => {
+    if (!live || !isPlaying) return
+    let i = typed.length
+    const id = setInterval(() => {
+      i += 1
+      setTyped(text.slice(0, i))
+      if (i >= text.length) clearInterval(id)
+    }, speed)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, isPlaying, text, speed])
+
+  const shown = live ? typed : manualTypedText
+  return (
+    <div
+      style={{
+        fontFamily: ts.fontFamily,
+        fontSize: `${ts.fontSize}px`,
+        fontWeight: resolveFontWeight(item, config),
+        color: ts.color,
+        letterSpacing: `${ts.letterSpacing}px`,
+        lineHeight: ts.lineHeight,
+        textAlign: resolveAlignment(item, config),
+        textTransform: item.uppercase ? "uppercase" : undefined,
+        fontStyle: item.italic ? "italic" : undefined,
+        padding: `0 ${config.paddingX}px`,
+        maxWidth: ts.maxWidth,
+        whiteSpace: ts.whiteSpace,
+        wordBreak: ts.wordBreak,
+        minHeight: "1.5em",
+        filter: resolveTextBlur(item, config) > 0 ? `blur(${resolveTextBlur(item, config)}px)` : undefined,
+      }}
+    >
+      {shown}
+      <motion.span
+        animate={{ opacity: [1, 0] }}
+        transition={{ duration: 0.5, repeat: Infinity }}
+        style={{ display: "inline-block", marginLeft: "0.05em" }}
+      >
+        |
+      </motion.span>
+    </div>
+  )
+}
+
 export function AppearingCredits({
   items,
   config,
@@ -457,37 +523,14 @@ export function AppearingCredits({
               manualRevealedLines={manualRevealedLines}
             />
           ) : currentAnimType === "typewriter" ? (
-            <div
-              style={{
-                fontFamily: resolveTextStyle(currentItem, config).fontFamily,
-                fontSize: `${resolveTextStyle(currentItem, config).fontSize}px`,
-                fontWeight: resolveFontWeight(currentItem, config),
-                color: resolveTextStyle(currentItem, config).color,
-                letterSpacing: `${resolveTextStyle(currentItem, config).letterSpacing}px`,
-                lineHeight: resolveTextStyle(currentItem, config).lineHeight,
-                textAlign: resolveAlignment(currentItem, config),
-                textTransform: currentItem.uppercase ? "uppercase" : undefined,
-                fontStyle: currentItem.italic ? "italic" : undefined,
-                padding: `0 ${config.paddingX}px`,
-                maxWidth: resolveTextStyle(currentItem, config).maxWidth,
-                whiteSpace: resolveTextStyle(currentItem, config).whiteSpace,
-                wordBreak: resolveTextStyle(currentItem, config).wordBreak,
-                minHeight: "1.5em",
-                filter:
-                  resolveTextBlur(currentItem, config) > 0
-                    ? `blur(${resolveTextBlur(currentItem, config)}px)`
-                    : undefined,
-              }}
-            >
-              {manualTypedText}
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                style={{ display: "inline-block", marginLeft: "0.05em" }}
-              >
-                |
-              </motion.span>
-            </div>
+            <TypewriterItem
+              item={currentItem}
+              config={config}
+              live={manualProgress === null}
+              isPlaying={isPlaying}
+              speed={resolveTypewriterSpeed(currentItem, config)}
+              manualTypedText={manualTypedText}
+            />
           ) : (
             <AppearItem item={currentItem} config={config} />
           )}
