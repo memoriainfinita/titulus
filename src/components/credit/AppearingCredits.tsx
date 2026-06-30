@@ -13,6 +13,8 @@ import {
   resolveLineRevealInterval,
   isLineStaggered,
   countItemLines,
+  revealedLinesAt,
+  typedCharsAt,
   AnimationTunables,
 } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -209,9 +211,9 @@ export function AppearingCredits({
 }: AppearingCreditsProps) {
   const visibleItems = React.useMemo(() => getVisibleItems(items), [items])
   const [currentIndex, setCurrentIndex] = React.useState(0)
-  const [typedText, setTypedText] = React.useState("")
-  // Line-by-line reveal: how many lines of the current item are visible (>=1 once it enters).
-  const [revealedLines, setRevealedLines] = React.useState(1)
+  // Manual-mode (export/scrub) derived state. Live playback is owned by the child items.
+  const [manualTypedText, setManualTypedText] = React.useState("")
+  const [manualRevealedLines, setManualRevealedLines] = React.useState(1)
 
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
@@ -254,30 +256,26 @@ export function AppearingCredits({
       acc += itemDurations[i]
     }
     if (foundIdx !== currentIndex) setCurrentIndex(foundIdx)
-    // For typewriter, compute typed text
     const foundItem = visibleItems[foundIdx]
     const foundType = foundItem ? resolveAnimationType(foundItem, config) : null
     if (foundItem && foundType === "typewriter") {
       const text = foundItem.text || ""
-      const typingDuration = Math.max(2, text.length * (resolveTypewriterSpeed(foundItem, config) / 1000))
-      const charsToShow = Math.min(text.length, Math.floor((timeIntoItem / typingDuration) * text.length))
-      setTypedText(text.slice(0, charsToShow))
+      setManualTypedText(text.slice(0, typedCharsAt(timeIntoItem, text.length, resolveTypewriterSpeed(foundItem, config))))
     } else {
-      setTypedText("")
+      setManualTypedText("")
     }
     if (foundItem && isLineStaggered(foundItem, config)) {
-      const total = countItemLines(foundItem)
-      const interval = resolveLineRevealInterval(foundItem, config)
-      const shown = interval > 0 ? Math.floor(timeIntoItem / interval) + 1 : total
-      setRevealedLines(Math.max(1, Math.min(total, shown)))
+      setManualRevealedLines(
+        revealedLinesAt(timeIntoItem, resolveLineRevealInterval(foundItem, config), countItemLines(foundItem)),
+      )
     }
   }, [manualProgress, visibleItems, itemDurations, totalDuration, config, config.animationType, config.typewriterSpeed, config.staggerLines, config.lineRevealInterval, currentIndex])
 
   // Reset on restart
   React.useEffect(() => {
     setCurrentIndex(0)
-    setTypedText("")
-    setRevealedLines(1)
+    setManualTypedText("")
+    setManualRevealedLines(1)
   }, [restartKey])
 
   // Advance items based on timing (skip when manualProgress is provided)
@@ -296,8 +294,8 @@ export function AppearingCredits({
 
     const t = setTimeout(() => {
       setCurrentIndex((i) => i + 1)
-      setTypedText("")
-      setRevealedLines(1)
+      setManualTypedText("")
+      setManualRevealedLines(1)
     }, itemDuration * 1000)
     return () => clearTimeout(t)
   }, [
@@ -310,43 +308,6 @@ export function AppearingCredits({
     config.animationType,
     manualProgress,
   ])
-
-  // Typewriter effect (skip in manual/export mode)
-  React.useEffect(() => {
-    if (manualProgress !== null) return
-    if (!isPlaying) return
-    if (currentIndex >= visibleItems.length) return
-    const item = visibleItems[currentIndex]
-    if (resolveAnimationType(item, config) !== "typewriter") return
-    const text = item.text || ""
-    setTypedText("")
-    let i = 0
-    const interval = setInterval(() => {
-      i += 1
-      setTypedText(text.slice(0, i))
-      if (i >= text.length) clearInterval(interval)
-    }, resolveTypewriterSpeed(item, config))
-    return () => clearInterval(interval)
-  }, [isPlaying, currentIndex, visibleItems, config.animationType, config.typewriterSpeed, manualProgress])
-
-  // Line-by-line reveal effect (skip in manual/export mode)
-  React.useEffect(() => {
-    if (manualProgress !== null) return
-    if (!isPlaying) return
-    if (currentIndex >= visibleItems.length) return
-    const item = visibleItems[currentIndex]
-    if (!isLineStaggered(item, config)) return
-    const total = countItemLines(item)
-    setRevealedLines(1)
-    if (total <= 1) return
-    let n = 1
-    const interval = setInterval(() => {
-      n += 1
-      setRevealedLines(n)
-      if (n >= total) clearInterval(interval)
-    }, resolveLineRevealInterval(item, config) * 1000)
-    return () => clearInterval(interval)
-  }, [isPlaying, currentIndex, visibleItems, config.animationType, config.staggerLines, config.lineRevealInterval, manualProgress])
 
   // Background
   const backgroundStyle: React.CSSProperties = config.useGradient
@@ -460,7 +421,7 @@ export function AppearingCredits({
             <LinesItem
               item={currentItem}
               config={config}
-              revealedLines={revealedLines}
+              revealedLines={manualRevealedLines}
               variants={variants}
             />
           ) : currentAnimType === "typewriter" ? (
@@ -486,7 +447,7 @@ export function AppearingCredits({
                     : undefined,
               }}
             >
-              {typedText}
+              {manualTypedText}
               <motion.span
                 animate={{ opacity: [1, 0] }}
                 transition={{ duration: 0.5, repeat: Infinity }}
