@@ -94,3 +94,19 @@ export function getAppearItemDuration(item: CreditItem, config: CreditConfig): n
     : 0
   return stagger + resolveAnimationDuration(item, config) + pause
 }
+
+// Number of lines visible at a given time into a line-by-line item.
+// At t=0 the first line is already entering; each interval adds one more.
+export function revealedLinesAt(timeIntoItem: number, intervalSec: number, totalLines: number): number {
+  if (totalLines <= 1) return totalLines
+  const shown = intervalSec > 0 ? Math.floor(timeIntoItem / intervalSec) + 1 : totalLines
+  return Math.max(1, Math.min(totalLines, shown))
+}
+
+// Number of typed characters at a given time into a typewriter item.
+// Typing time has a 2s floor (matches getAppearItemDuration).
+export function typedCharsAt(timeIntoItem: number, textLength: number, speedMs: number): number {
+  if (textLength <= 0) return 0
+  const typingDuration = Math.max(2, textLength * (speedMs / 1000))
+  return Math.min(textLength, Math.floor((timeIntoItem / typingDuration) * textLength))
+}

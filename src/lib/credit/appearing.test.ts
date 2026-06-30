@@ -8,6 +8,8 @@ import {
   resolveLineRevealInterval,
   resolveStaggerLines,
   isLineStaggered,
+  revealedLinesAt,
+  typedCharsAt,
 } from "./appearing"
 import { DEFAULT_CONFIG, CreditItem, CreditConfig } from "./types"
 
@@ -229,5 +231,43 @@ describe("getAppearItemDuration (line-by-line)", () => {
     const cfg = makeConfig({ staggerLines: true, animationType: "blur", animationDuration: 0.8, lineRevealInterval: 0.5, pauseDuration: 0 })
     // 2 lines: (2-1)*0.5 + 0.8 = 1.3
     expect(getAppearItemDuration(makeItem({ text: "A\nB" }), cfg)).toBeCloseTo(1.3)
+  })
+})
+
+describe("revealedLinesAt", () => {
+  it("muestra 1 línea en t=0 y suma una por intervalo", () => {
+    expect(revealedLinesAt(0, 0.5, 3)).toBe(1)
+    expect(revealedLinesAt(0.5, 0.5, 3)).toBe(2)
+    expect(revealedLinesAt(1.0, 0.5, 3)).toBe(3)
+  })
+
+  it("satura en totalLines", () => {
+    expect(revealedLinesAt(99, 0.5, 3)).toBe(3)
+  })
+
+  it("una sola línea siempre es 1", () => {
+    expect(revealedLinesAt(0, 0.5, 1)).toBe(1)
+    expect(revealedLinesAt(5, 0.5, 1)).toBe(1)
+  })
+
+  it("intervalo <= 0 revela todo de golpe", () => {
+    expect(revealedLinesAt(0, 0, 4)).toBe(4)
+  })
+})
+
+describe("typedCharsAt", () => {
+  it("texto vacío teclea 0", () => {
+    expect(typedCharsAt(5, 0, 50)).toBe(0)
+  })
+
+  it("progresa linealmente sobre la duración de tecleo", () => {
+    // 100 chars * 100ms = 10s de tecleo; a la mitad -> 50 chars
+    expect(typedCharsAt(5, 100, 100)).toBe(50)
+    expect(typedCharsAt(10, 100, 100)).toBe(100)
+  })
+
+  it("la duración de tecleo tiene un suelo de 2s", () => {
+    // 4 chars * 50ms = 0.2s -> max(2, 0.2) = 2s; a 1s -> mitad -> 2 chars
+    expect(typedCharsAt(1, 4, 50)).toBe(2)
   })
 })
