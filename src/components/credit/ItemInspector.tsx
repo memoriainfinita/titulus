@@ -11,7 +11,7 @@ import {
 import { useCreditStore, getFontSize } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType } from "@/lib/credit/types"
-import { resolveAnimationType } from "@/lib/credit/appearing"
+import { resolveAnimationType, resolveStaggerLines } from "@/lib/credit/appearing"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -46,6 +46,7 @@ function AnimationOverrides({
   updateItem: (id: string, patch: Partial<CreditItem>) => void
 }) {
   const effectiveType = resolveAnimationType(item, config)
+  const effectiveStagger = resolveStaggerLines(item, config)
   const numHandler =
     (key: keyof CreditItem, min?: number) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +104,37 @@ function AnimationOverrides({
             className="h-7 w-24 text-sm"
           />
           <span className="text-[10px] text-muted-foreground">ms · vacío = global</span>
+        </div>
+      )}
+      {effectiveType !== "typewriter" && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Línea a línea</span>
+          <Select
+            value={item.staggerLines === undefined ? "__global" : item.staggerLines ? "on" : "off"}
+            onValueChange={(v) =>
+              updateItem(item.id, { staggerLines: v === "__global" ? undefined : v === "on" })
+            }
+          >
+            <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__global">(global)</SelectItem>
+              <SelectItem value="on">Sí</SelectItem>
+              <SelectItem value="off">No</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {effectiveType !== "typewriter" && effectiveStagger && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Interv. línea</span>
+          <Input
+            type="number" min={0.1} step={0.1}
+            value={item.lineRevealInterval ?? ""}
+            placeholder={String(config.lineRevealInterval)}
+            onChange={numHandler("lineRevealInterval", 0.1)}
+            className="h-7 w-24 text-sm"
+          />
+          <span className="text-[10px] text-muted-foreground">s · vacío = global</span>
         </div>
       )}
       {effectiveType.startsWith("slide") && (

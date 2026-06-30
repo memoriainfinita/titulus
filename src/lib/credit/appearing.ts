@@ -48,15 +48,49 @@ export function resolveTypewriterSpeed(item: CreditItem, config: CreditConfig): 
   return typeof o === "number" && o > 0 ? o : config.typewriterSpeed
 }
 
+// Line-by-line reveal interval (seconds per line) for an item: its own override
+// when > 0, otherwise the global interval.
+export function resolveLineRevealInterval(item: CreditItem, config: CreditConfig): number {
+  const o = item.lineRevealInterval
+  return typeof o === "number" && o > 0 ? o : config.lineRevealInterval
+}
+
+// Whether the item reveals its text line by line. Tri-state per item override,
+// otherwise the global flag.
+export function resolveStaggerLines(item: CreditItem, config: CreditConfig): boolean {
+  return item.staggerLines ?? config.staggerLines
+}
+
+// Number of text lines in an item (split on "\n"). Empty text counts as one line.
+export function countItemLines(item: CreditItem): number {
+  return (item.text || "").split("\n").length
+}
+
+// Whether line-by-line staggering is actually applied to this item: the flag is on,
+// the animation is not typewriter, and there is more than one line.
+export function isLineStaggered(item: CreditItem, config: CreditConfig): boolean {
+  return (
+    resolveStaggerLines(item, config) &&
+    resolveAnimationType(item, config) !== "typewriter" &&
+    countItemLines(item) > 1
+  )
+}
+
 // Total time an item stays on screen before advancing to the next one, in seconds.
 // Animation type and duration can be overridden per item.
 // Typewriter derives its "animation" time from the text length and the
 // (per-item-resolvable) typewriter speed instead.
+// When line-by-line is enabled, the entrance is staggered: each extra line adds
+// one interval on top of the per-line animation duration.
 export function getAppearItemDuration(item: CreditItem, config: CreditConfig): number {
   const pause = resolveItemPause(item, config)
-  if (resolveAnimationType(item, config) === "typewriter") {
+  const type = resolveAnimationType(item, config)
+  if (type === "typewriter") {
     const text = item.text || ""
     return Math.max(2, text.length * (resolveTypewriterSpeed(item, config) / 1000)) + pause
   }
-  return resolveAnimationDuration(item, config) + pause
+  const stagger = isLineStaggered(item, config)
+    ? (countItemLines(item) - 1) * resolveLineRevealInterval(item, config)
+    : 0
+  return stagger + resolveAnimationDuration(item, config) + pause
 }

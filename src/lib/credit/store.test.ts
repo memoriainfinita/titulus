@@ -257,8 +257,11 @@ describe("project import/export", () => {
           textShadowY: -2,
           textShadowOpacity: 0.5,
           typewriterSpeed: 120,
+          staggerLines: true,
+          lineRevealInterval: 0.8,
         },
       ],
+      config: { ...DEFAULT_CONFIG, staggerLines: true, lineRevealInterval: 1.2 },
     })
     const json = useCreditStore.getState().exportProject()
     useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
@@ -272,6 +275,10 @@ describe("project import/export", () => {
     expect(it0.textShadowY).toBe(-2)
     expect(it0.textShadowOpacity).toBe(0.5)
     expect(it0.typewriterSpeed).toBe(120)
+    expect(it0.staggerLines).toBe(true)
+    expect(it0.lineRevealInterval).toBe(0.8)
+    expect(useCreditStore.getState().config.staggerLines).toBe(true)
+    expect(useCreditStore.getState().config.lineRevealInterval).toBe(1.2)
   })
 })
 

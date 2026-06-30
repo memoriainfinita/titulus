@@ -796,6 +796,28 @@ function GlobalConfig() {
                   />
                 </Field>
               )}
+              {config.animationType !== "typewriter" && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Revelar línea a línea</Label>
+                    <Switch
+                      checked={config.staggerLines}
+                      onCheckedChange={(v) => updateConfig({ staggerLines: v })}
+                    />
+                  </div>
+                  {config.staggerLines && (
+                    <Field label="Intervalo entre líneas" hint={`${config.lineRevealInterval}s/línea`}>
+                      <Slider
+                        value={[config.lineRevealInterval]}
+                        onValueChange={(v) => updateConfig({ lineRevealInterval: v[0] })}
+                        min={0.1}
+                        max={3}
+                        step={0.1}
+                      />
+                    </Field>
+                  )}
+                </>
+              )}
             </Section>
           )}
         </div>

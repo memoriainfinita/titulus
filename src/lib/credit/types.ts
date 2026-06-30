@@ -48,6 +48,11 @@ export interface CreditItem {
   textShadowOpacity?: number // 0-1; undefined = inherit
   // Typewriter speed (ms per character, appearing mode). undefined/<=0 = inherit config.typewriterSpeed.
   typewriterSpeed?: number
+  // Reveal the item's text line by line (appearing mode), staggering each line by lineRevealInterval.
+  // Each line enters with the item's resolved animationType. Tri-state: undefined = inherit, true/false = override.
+  staggerLines?: boolean
+  // Line-by-line reveal interval (seconds per line). undefined/<=0 = inherit config.lineRevealInterval.
+  lineRevealInterval?: number
   // Spacer override: alto en px. undefined = hereda config.spacerHeight.
   spacerHeight?: number
   // Divider overrides. undefined = hereda el config.divider* correspondiente.
@@ -151,6 +156,8 @@ export interface CreditConfig {
   loop: boolean
   showAllAtOnce: boolean
   typewriterSpeed: number // ms per character for the typewriter animation
+  staggerLines: boolean // reveal item text line by line (appearing mode)
+  lineRevealInterval: number // seconds per line for the line-by-line reveal
   // Appearing animation tunables
   animSlideDistance: number // px traveled by slide-* variants
   animBlurAmount: number // px blur for the blur variant
@@ -222,6 +229,8 @@ export const DEFAULT_CONFIG: CreditConfig = {
   loop: true,
   showAllAtOnce: false,
   typewriterSpeed: 50,
+  staggerLines: false,
+  lineRevealInterval: 0.4,
   animSlideDistance: 80,
   animBlurAmount: 20,
   animZoomFrom: 0.6,
