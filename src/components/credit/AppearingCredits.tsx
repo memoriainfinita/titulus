@@ -151,14 +151,37 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
 function LinesItem({
   item,
   config,
-  revealedLines,
   variants,
+  live,
+  isPlaying,
+  totalLines,
+  revealInterval,
+  manualRevealedLines,
 }: {
   item: CreditItem
   config: CreditConfig
-  revealedLines: number
   variants: ReturnType<typeof getVariants>
+  live: boolean
+  isPlaying: boolean
+  totalLines: number
+  revealInterval: number
+  manualRevealedLines: number
 }) {
+  // Live reveal: this component mounts only when the item is visible (mode="wait"),
+  // so the interval starts at the right moment. Pause freezes, resume continues.
+  const [revealed, setRevealed] = React.useState(1)
+  React.useEffect(() => {
+    if (!live || !isPlaying || totalLines <= 1) return
+    const id = setInterval(() => {
+      setRevealed((n) => {
+        if (n + 1 >= totalLines) clearInterval(id)
+        return Math.min(totalLines, n + 1)
+      })
+    }, revealInterval * 1000)
+    return () => clearInterval(id)
+  }, [live, isPlaying, totalLines, revealInterval])
+  const revealedLines = live ? revealed : manualRevealedLines
+
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
   const fontWeight = resolveFontWeight(item, config)
@@ -185,16 +208,21 @@ function LinesItem({
         wordBreak: ts.wordBreak,
       }}
     >
-      {lines.map((line, i) => (
+      {lines.map((line, i) => {
+        const shown = i < revealedLines
+        // Live: animate each line with the chosen variants. Manual: jump to the
+        // final state with no transition (frame-accurate for export).
+        return (
         <motion.div
           key={i}
-          initial={variants.initial}
-          animate={i < revealedLines ? variants.animate : variants.initial}
-          transition={variants.transition}
+          initial={live ? variants.initial : false}
+          animate={shown ? variants.animate : variants.initial}
+          transition={live ? variants.transition : { duration: 0 }}
         >
           {line || " "}
         </motion.div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -421,8 +449,12 @@ export function AppearingCredits({
             <LinesItem
               item={currentItem}
               config={config}
-              revealedLines={manualRevealedLines}
               variants={variants}
+              live={manualProgress === null}
+              isPlaying={isPlaying}
+              totalLines={countItemLines(currentItem)}
+              revealInterval={resolveLineRevealInterval(currentItem, config)}
+              manualRevealedLines={manualRevealedLines}
             />
           ) : currentAnimType === "typewriter" ? (
             <div
