@@ -293,6 +293,16 @@ function TypewriterItem({
   )
 }
 
+// Fires once when mounted. Because AnimatePresence mode="wait" only mounts the
+// new item after the previous one finishes exiting, this is the "item is now
+// visible" signal — valid for the first item too.
+function MountSignal({ onMount }: { onMount: () => void }) {
+  const ref = React.useRef(onMount)
+  ref.current = onMount
+  React.useEffect(() => { ref.current() }, []) // fire exactly once per mount (per appearance)
+  return null
+}
+
 export function AppearingCredits({
   items,
   config,
@@ -305,6 +315,11 @@ export function AppearingCredits({
 }: AppearingCreditsProps) {
   const visibleItems = React.useMemo(() => getVisibleItems(items), [items])
   const [currentIndex, setCurrentIndex] = React.useState(0)
+  const [cycle, setCycle] = React.useState(0)        // bumps each loop so single-item loops re-mount
+  const [shownTick, setShownTick] = React.useState(0) // bumps when the current item becomes visible
+  const currentIndexRef = React.useRef(0)
+  React.useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
+  const handleShown = React.useCallback(() => setShownTick((t) => t + 1), [])
   // Manual-mode (export/scrub) derived state. Live playback is owned by the child items.
   const [manualTypedText, setManualTypedText] = React.useState("")
   const [manualRevealedLines, setManualRevealedLines] = React.useState(1)
@@ -368,40 +383,34 @@ export function AppearingCredits({
   // Reset on restart
   React.useEffect(() => {
     setCurrentIndex(0)
+    setCycle((c) => c + 1) // force a fresh appearance of item 0
     setManualTypedText("")
     setManualRevealedLines(1)
   }, [restartKey])
 
-  // Advance items based on timing (skip when manualProgress is provided)
+  // Advance is anchored to visibility: scheduled when the current item is shown
+  // (shownTick) and rescheduled on resume. Reading currentIndex via ref avoids a
+  // stale closure without re-scheduling on the (not-yet-visible) index change.
   React.useEffect(() => {
     if (manualProgress !== null) return
     if (!isPlaying || visibleItems.length === 0) return
-    if (currentIndex >= visibleItems.length) {
-      if (config.loop) {
-        const t = setTimeout(() => setCurrentIndex(0), config.pauseDuration * 1000)
-        return () => clearTimeout(t)
-      }
-      return
-    }
-    const item = visibleItems[currentIndex]
-    const itemDuration = getAppearItemDuration(item, config)
-
+    const idx = currentIndexRef.current
+    if (idx >= visibleItems.length) return
+    const item = visibleItems[idx]
     const t = setTimeout(() => {
-      setCurrentIndex((i) => i + 1)
-      setManualTypedText("")
-      setManualRevealedLines(1)
-    }, itemDuration * 1000)
+      if (idx >= visibleItems.length - 1) {
+        if (config.loop) {
+          setCycle((c) => c + 1)
+          setCurrentIndex(0)
+        } else {
+          setCurrentIndex(visibleItems.length) // -> Fin
+        }
+      } else {
+        setCurrentIndex(idx + 1)
+      }
+    }, getAppearItemDuration(item, config) * 1000)
     return () => clearTimeout(t)
-  }, [
-    isPlaying,
-    currentIndex,
-    visibleItems,
-    config.animationDuration,
-    config.pauseDuration,
-    config.loop,
-    config.animationType,
-    manualProgress,
-  ])
+  }, [shownTick, isPlaying, manualProgress, visibleItems, config])
 
   // Background
   const backgroundStyle: React.CSSProperties = config.useGradient
@@ -493,13 +502,14 @@ export function AppearingCredits({
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentItem.id}
+          key={`${currentItem.id}-${currentIndex}-${cycle}-${restartKey}`}
           initial={containerVariants.initial}
           animate={containerVariants.animate}
           exit={containerVariants.exit}
           transition={containerVariants.transition}
           className="w-full flex flex-col items-center justify-center px-4"
         >
+          <MountSignal onMount={handleShown} />
           {currentItem.type === "image" ? (
             currentItem.imageSrc ? (
               <div className="w-full flex justify-center" style={{ padding: `0 ${config.paddingX}px` }}>
