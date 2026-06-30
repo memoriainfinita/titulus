@@ -5,6 +5,9 @@ import {
   resolveAnimationDuration,
   resolveAnimationTunables,
   resolveTypewriterSpeed,
+  resolveLineRevealInterval,
+  resolveStaggerLines,
+  isLineStaggered,
 } from "./appearing"
 import { DEFAULT_CONFIG, CreditItem, CreditConfig } from "./types"
 
@@ -136,5 +139,95 @@ describe("resolveTypewriterSpeed", () => {
     const cfg = makeConfig({ animationType: "typewriter", typewriterSpeed: 50, pauseDuration: 0 })
     const text = "x".repeat(100) // 100 chars * 100ms = 10s
     expect(getAppearItemDuration(makeItem({ text, typewriterSpeed: 100, pauseOverride: 0 }), cfg)).toBe(10)
+  })
+})
+
+describe("resolveLineRevealInterval", () => {
+  const config = makeConfig({ lineRevealInterval: 0.4 })
+
+  it("inherits the global interval by default", () => {
+    expect(resolveLineRevealInterval(makeItem(), config)).toBe(0.4)
+  })
+
+  it("uses a positive per-item override", () => {
+    expect(resolveLineRevealInterval(makeItem({ lineRevealInterval: 1 }), config)).toBe(1)
+  })
+
+  it("ignores a non-positive override and inherits the global interval", () => {
+    expect(resolveLineRevealInterval(makeItem({ lineRevealInterval: 0 }), config)).toBe(0.4)
+    expect(resolveLineRevealInterval(makeItem({ lineRevealInterval: -1 }), config)).toBe(0.4)
+  })
+})
+
+describe("resolveStaggerLines", () => {
+  it("inherits the global flag by default", () => {
+    expect(resolveStaggerLines(makeItem(), makeConfig({ staggerLines: true }))).toBe(true)
+    expect(resolveStaggerLines(makeItem(), makeConfig({ staggerLines: false }))).toBe(false)
+  })
+
+  it("uses the per-item override when set", () => {
+    expect(resolveStaggerLines(makeItem({ staggerLines: false }), makeConfig({ staggerLines: true }))).toBe(false)
+    expect(resolveStaggerLines(makeItem({ staggerLines: true }), makeConfig({ staggerLines: false }))).toBe(true)
+  })
+})
+
+describe("isLineStaggered", () => {
+  const config = makeConfig({ staggerLines: true, animationType: "fade" })
+
+  it("is true when the flag is on, type is not typewriter and there is more than one line", () => {
+    expect(isLineStaggered(makeItem({ text: "A\nB" }), config)).toBe(true)
+  })
+
+  it("is false for a single line", () => {
+    expect(isLineStaggered(makeItem({ text: "A" }), config)).toBe(false)
+  })
+
+  it("is false when the flag is off", () => {
+    expect(isLineStaggered(makeItem({ text: "A\nB" }), makeConfig({ staggerLines: false }))).toBe(false)
+  })
+
+  it("is false for typewriter even with the flag on", () => {
+    expect(isLineStaggered(makeItem({ text: "A\nB", animationType: "typewriter" }), config)).toBe(false)
+  })
+})
+
+describe("getAppearItemDuration (line-by-line)", () => {
+  // reveal = (nLines - 1) * interval + animationDuration ; total = reveal + pause
+  const config = makeConfig({
+    staggerLines: true,
+    animationType: "fade",
+    animationDuration: 1, // per-line entrance
+    lineRevealInterval: 0.5,
+    pauseDuration: 2,
+  })
+
+  it("a single line is not staggered (plain entrance)", () => {
+    // 0 extra lines: 1 + 2 = 3
+    expect(getAppearItemDuration(makeItem({ text: "Una sola" }), config)).toBe(3)
+  })
+
+  it("staggers each extra line by the interval", () => {
+    // 3 lines: (3-1)*0.5 + 1 = 2 ; + 2 = 4
+    expect(getAppearItemDuration(makeItem({ text: "A\nB\nC" }), config)).toBe(4)
+  })
+
+  it("honors a per-item interval override", () => {
+    // interval 1: (3-1)*1 + 1 = 3 ; + pause override 0 = 3
+    expect(
+      getAppearItemDuration(makeItem({ text: "A\nB\nC", lineRevealInterval: 1, pauseOverride: 0 }), config),
+    ).toBe(3)
+  })
+
+  it("ignores the stagger when the per-item flag turns it off", () => {
+    // staggerLines false on item: 1 + 2 = 3 regardless of line count
+    expect(
+      getAppearItemDuration(makeItem({ text: "A\nB\nC", staggerLines: false }), config),
+    ).toBe(3)
+  })
+
+  it("combines with a non-fade type (blur) using its animationDuration", () => {
+    const cfg = makeConfig({ staggerLines: true, animationType: "blur", animationDuration: 0.8, lineRevealInterval: 0.5, pauseDuration: 0 })
+    // 2 lines: (2-1)*0.5 + 0.8 = 1.3
+    expect(getAppearItemDuration(makeItem({ text: "A\nB" }), cfg)).toBeCloseTo(1.3)
   })
 })

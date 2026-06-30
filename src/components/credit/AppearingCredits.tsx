@@ -10,6 +10,9 @@ import {
   resolveAnimationDuration,
   resolveAnimationTunables,
   resolveTypewriterSpeed,
+  resolveLineRevealInterval,
+  isLineStaggered,
+  countItemLines,
   AnimationTunables,
 } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -48,6 +51,9 @@ export function getVariants(
   const transition = { duration, ease: [0.4, 0, 0.2, 1] as const }
   switch (type) {
     case "fade":
+    default:
+      // `default` keeps render robust against legacy/unknown persisted types
+      // (e.g. an old "lines" value) — they fall back to a plain fade.
       return {
         initial: { opacity: 0 },
         animate: { opacity: 1 },
@@ -137,6 +143,60 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
   )
 }
 
+// Line-by-line reveal: renders each text line, revealing them as `revealedLines` grows.
+// Lines accumulate top-to-bottom; each one enters with the item's animation `variants`
+// (fade/blur/slide/zoom), so the reveal combines with the chosen animation type.
+function LinesItem({
+  item,
+  config,
+  revealedLines,
+  variants,
+}: {
+  item: CreditItem
+  config: CreditConfig
+  revealedLines: number
+  variants: ReturnType<typeof getVariants>
+}) {
+  const align = resolveAlignment(item, config)
+  const ts = resolveTextStyle(item, config)
+  const fontWeight = resolveFontWeight(item, config)
+  const shadow = resolveTextShadow(item, config)
+  const blur = resolveTextBlur(item, config)
+  const lines = (item.text || " ").split("\n")
+  return (
+    <div
+      style={{
+        fontFamily: ts.fontFamily,
+        fontSize: `${ts.fontSize}px`,
+        fontWeight,
+        color: ts.color,
+        letterSpacing: `${ts.letterSpacing}px`,
+        lineHeight: ts.lineHeight,
+        textAlign: align,
+        textShadow: shadow,
+        filter: blur > 0 ? `blur(${blur}px)` : undefined,
+        textTransform: item.uppercase ? "uppercase" : undefined,
+        fontStyle: item.italic ? "italic" : undefined,
+        padding: `0 ${config.paddingX}px`,
+        maxWidth: ts.maxWidth,
+        whiteSpace: ts.whiteSpace,
+        wordBreak: ts.wordBreak,
+      }}
+    >
+      {lines.map((line, i) => (
+        <motion.div
+          key={i}
+          initial={variants.initial}
+          animate={i < revealedLines ? variants.animate : variants.initial}
+          transition={variants.transition}
+        >
+          {line || " "}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
 export function AppearingCredits({
   items,
   config,
@@ -150,11 +210,13 @@ export function AppearingCredits({
   const visibleItems = React.useMemo(() => getVisibleItems(items), [items])
   const [currentIndex, setCurrentIndex] = React.useState(0)
   const [typedText, setTypedText] = React.useState("")
+  // Line-by-line reveal: how many lines of the current item are visible (>=1 once it enters).
+  const [revealedLines, setRevealedLines] = React.useState(1)
 
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
     return visibleItems.map((item) => getAppearItemDuration(item, config))
-  }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration])
+  }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration, config.lineRevealInterval, config.typewriterSpeed])
 
   const totalDuration = React.useMemo(
     () => itemDurations.reduce((sum, d) => sum + d, 0),
@@ -194,7 +256,8 @@ export function AppearingCredits({
     if (foundIdx !== currentIndex) setCurrentIndex(foundIdx)
     // For typewriter, compute typed text
     const foundItem = visibleItems[foundIdx]
-    if (foundItem && resolveAnimationType(foundItem, config) === "typewriter") {
+    const foundType = foundItem ? resolveAnimationType(foundItem, config) : null
+    if (foundItem && foundType === "typewriter") {
       const text = foundItem.text || ""
       const typingDuration = Math.max(2, text.length * (resolveTypewriterSpeed(foundItem, config) / 1000))
       const charsToShow = Math.min(text.length, Math.floor((timeIntoItem / typingDuration) * text.length))
@@ -202,12 +265,19 @@ export function AppearingCredits({
     } else {
       setTypedText("")
     }
-  }, [manualProgress, visibleItems, itemDurations, totalDuration, config, config.animationType, config.typewriterSpeed, currentIndex])
+    if (foundItem && isLineStaggered(foundItem, config)) {
+      const total = countItemLines(foundItem)
+      const interval = resolveLineRevealInterval(foundItem, config)
+      const shown = interval > 0 ? Math.floor(timeIntoItem / interval) + 1 : total
+      setRevealedLines(Math.max(1, Math.min(total, shown)))
+    }
+  }, [manualProgress, visibleItems, itemDurations, totalDuration, config, config.animationType, config.typewriterSpeed, config.staggerLines, config.lineRevealInterval, currentIndex])
 
   // Reset on restart
   React.useEffect(() => {
     setCurrentIndex(0)
     setTypedText("")
+    setRevealedLines(1)
   }, [restartKey])
 
   // Advance items based on timing (skip when manualProgress is provided)
@@ -227,6 +297,7 @@ export function AppearingCredits({
     const t = setTimeout(() => {
       setCurrentIndex((i) => i + 1)
       setTypedText("")
+      setRevealedLines(1)
     }, itemDuration * 1000)
     return () => clearTimeout(t)
   }, [
@@ -257,6 +328,25 @@ export function AppearingCredits({
     }, resolveTypewriterSpeed(item, config))
     return () => clearInterval(interval)
   }, [isPlaying, currentIndex, visibleItems, config.animationType, config.typewriterSpeed, manualProgress])
+
+  // Line-by-line reveal effect (skip in manual/export mode)
+  React.useEffect(() => {
+    if (manualProgress !== null) return
+    if (!isPlaying) return
+    if (currentIndex >= visibleItems.length) return
+    const item = visibleItems[currentIndex]
+    if (!isLineStaggered(item, config)) return
+    const total = countItemLines(item)
+    setRevealedLines(1)
+    if (total <= 1) return
+    let n = 1
+    const interval = setInterval(() => {
+      n += 1
+      setRevealedLines(n)
+      if (n >= total) clearInterval(interval)
+    }, resolveLineRevealInterval(item, config) * 1000)
+    return () => clearInterval(interval)
+  }, [isPlaying, currentIndex, visibleItems, config.animationType, config.staggerLines, config.lineRevealInterval, manualProgress])
 
   // Background
   const backgroundStyle: React.CSSProperties = config.useGradient
@@ -305,6 +395,12 @@ export function AppearingCredits({
     resolveAnimationDuration(currentItem, config),
     resolveAnimationTunables(currentItem, config),
   )
+  const staggered = isLineStaggered(currentItem, config)
+  // When revealing line by line, each line plays the animation itself, so the
+  // outer container holds steady (like typewriter) to avoid animating twice.
+  const containerVariants = staggered
+    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: variants.transition }
+    : variants
 
   return (
     <div
@@ -343,10 +439,10 @@ export function AppearingCredits({
       <AnimatePresence mode="wait">
         <motion.div
           key={currentItem.id}
-          initial={variants.initial}
-          animate={variants.animate}
-          exit={variants.exit}
-          transition={variants.transition}
+          initial={containerVariants.initial}
+          animate={containerVariants.animate}
+          exit={containerVariants.exit}
+          transition={containerVariants.transition}
           className="w-full flex flex-col items-center justify-center px-4"
         >
           {currentItem.type === "image" ? (
@@ -360,6 +456,13 @@ export function AppearingCredits({
                 />
               </div>
             ) : null
+          ) : staggered ? (
+            <LinesItem
+              item={currentItem}
+              config={config}
+              revealedLines={revealedLines}
+              variants={variants}
+            />
           ) : currentAnimType === "typewriter" ? (
             <div
               style={{
