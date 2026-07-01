@@ -121,12 +121,22 @@ export function buildGoogleFontUrl(family: string, weights: string[] = ["400", "
   return `https://fonts.googleapis.com/css2?family=${familyParam}${weightsParam}&display=swap`
 }
 
-// Build a combined URL for multiple fonts (to reduce HTTP requests)
-export function buildCombinedGoogleFontUrl(fonts: { family: string; weights: string[] }[]): string {
-  const parts = fonts.map((f) => {
-    const familyParam = f.family.replace(/ /g, "+")
-    const weightsParam = f.weights.length > 1 ? `:wght@${f.weights.join(";")}` : ""
-    return `family=${familyParam}${weightsParam}`
-  })
-  return `https://fonts.googleapis.com/css2?${parts.join("&")}&display=swap`
+// Generic CSS fallback for each system font in the catalog.
+const SYSTEM_FONT_FALLBACKS: Record<string, string> = {
+  Georgia: "serif",
+  "Times New Roman": "serif",
+  Arial: "sans-serif",
+  Helvetica: "sans-serif",
+  "Courier New": "monospace",
+  Verdana: "sans-serif",
+  Tahoma: "sans-serif",
+  "Trebuchet MS": "sans-serif",
+}
+
+// Build the CSS font-family value for a system font: quoted when the name has
+// spaces, followed by its generic fallback. "system-ui" is already generic.
+export function buildSystemFontFamily(name: string): string {
+  if (name === "system-ui") return "system-ui"
+  const quoted = name.includes(" ") ? `'${name}'` : name
+  return `${quoted}, ${SYSTEM_FONT_FALLBACKS[name] ?? "sans-serif"}`
 }
