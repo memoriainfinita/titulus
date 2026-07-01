@@ -351,6 +351,18 @@ export function useVideoExport() {
 
         return blob
       } catch (err) {
+        // Cancelling during encoding terminates the ffmpeg worker, which makes
+        // the pending exec/readFile reject: report a cancel, not an error.
+        if (cancelRef.current) {
+          setProgress({
+            phase: "idle",
+            currentFrame: 0,
+            totalFrames: 0,
+            message: "Exportación cancelada",
+            overallProgress: 0,
+          })
+          return null
+        }
         console.error("Export failed", err)
         setProgress({
           phase: "error",
@@ -369,6 +381,11 @@ export function useVideoExport() {
 
   const cancelExport = React.useCallback(() => {
     cancelRef.current = true
+    // During ffmpeg.exec the capture-loop check never runs, so kill the worker
+    // to abort the encode. A terminated instance can't be reused: drop it and
+    // let the next export load a fresh one.
+    ffmpegRef.current?.terminate()
+    ffmpegRef.current = null
   }, [])
 
   const reset = React.useCallback(() => {
