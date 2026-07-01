@@ -134,7 +134,6 @@ export interface CreditConfig {
   dividerColor: string // empty = inherit textColor
   imageWidth: number // percent of stage width
   // Effects
-  textShadow: string
   useTextShadow: boolean
   textShadowColor: string
   textShadowBlur: number
@@ -154,7 +153,6 @@ export interface CreditConfig {
   animationDuration: number // seconds
   pauseDuration: number // seconds between items
   loop: boolean
-  showAllAtOnce: boolean
   typewriterSpeed: number // ms per character for the typewriter animation
   staggerLines: boolean // reveal item text line by line (appearing mode)
   lineRevealInterval: number // seconds per line for the line-by-line reveal
@@ -170,15 +168,6 @@ export interface CreditConfig {
   // Preview guides (never exported into the video)
   showSafeMargins: boolean // title-safe / action-safe overlay in the editor preview
   respectSafeMargins: boolean // constriñe el contenido a la caja título-segura; SÍ afecta al export
-}
-
-export interface CreditProject {
-  id: string
-  name: string
-  items: CreditItem[]
-  config: CreditConfig
-  createdAt: number
-  updatedAt: number
 }
 
 export const DEFAULT_CONFIG: CreditConfig = {
@@ -210,7 +199,6 @@ export const DEFAULT_CONFIG: CreditConfig = {
   dividerStyle: "solid",
   dividerColor: "",
   imageWidth: 40,
-  textShadow: "0 2px 12px rgba(0,0,0,0.6)",
   useTextShadow: true,
   textShadowColor: "#000000",
   textShadowBlur: 12,
@@ -227,7 +215,6 @@ export const DEFAULT_CONFIG: CreditConfig = {
   animationDuration: 1.5,
   pauseDuration: 1.5,
   loop: true,
-  showAllAtOnce: false,
   typewriterSpeed: 50,
   staggerLines: false,
   lineRevealInterval: 0.4,
