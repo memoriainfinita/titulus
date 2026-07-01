@@ -12,7 +12,25 @@ import {
   FontItem,
   Alignment,
   UserPreset,
+  CREDIT_TYPE_LABELS,
 } from "./types"
+
+function isPlainObject(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null && !Array.isArray(x)
+}
+
+// Guards imported JSON: a corrupt `items` array would otherwise crash the render.
+export function isValidImportedItems(x: unknown): x is CreditItem[] {
+  if (!Array.isArray(x)) return false
+  return x.every(
+    (it) =>
+      isPlainObject(it) &&
+      typeof it.id === "string" &&
+      typeof it.type === "string" &&
+      it.type in CREDIT_TYPE_LABELS &&
+      typeof it.text === "string",
+  )
+}
 
 interface CreditState {
   // Data
@@ -301,11 +319,12 @@ export const useCreditStore = create<CreditState>()(
       importProject: (json) => {
         try {
           const parsed = JSON.parse(json)
-          if (!parsed.items || !parsed.config) return false
+          if (!isValidImportedItems(parsed.items)) return false
+          if (!isPlainObject(parsed.config)) return false
           set({
             items: parsed.items,
             config: { ...DEFAULT_CONFIG, ...parsed.config },
-            fonts: parsed.fonts || DEFAULT_FONTS,
+            fonts: Array.isArray(parsed.fonts) ? parsed.fonts : DEFAULT_FONTS,
             projectName: parsed.projectName || "Proyecto importado",
             selectedItemId: null,
           })

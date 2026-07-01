@@ -182,6 +182,39 @@ describe("project import/export", () => {
     expect(useCreditStore.getState().importProject(JSON.stringify({ foo: 1 }))).toBe(false)
   })
 
+  it("rejects items that is not an array", () => {
+    const json = JSON.stringify({ items: { id: "a" }, config: {} })
+    expect(useCreditStore.getState().importProject(json)).toBe(false)
+  })
+
+  it("rejects items entries with a corrupt shape", () => {
+    const missingFields = JSON.stringify({ items: [{ id: "a" }], config: {} })
+    const nullEntry = JSON.stringify({ items: [null], config: {} })
+    const unknownType = JSON.stringify({
+      items: [{ id: "a", type: "nonsense", text: "x" }],
+      config: {},
+    })
+    expect(useCreditStore.getState().importProject(missingFields)).toBe(false)
+    expect(useCreditStore.getState().importProject(nullEntry)).toBe(false)
+    expect(useCreditStore.getState().importProject(unknownType)).toBe(false)
+  })
+
+  it("rejects a config that is not a plain object", () => {
+    const json = JSON.stringify({ items: [{ id: "a", type: "name", text: "x" }], config: [] })
+    expect(useCreditStore.getState().importProject(json)).toBe(false)
+  })
+
+  it("falls back to default fonts when fonts is not an array", () => {
+    const json = JSON.stringify({
+      items: [{ id: "a", type: "name", text: "x" }],
+      config: {},
+      fonts: "corrupt",
+    })
+    expect(useCreditStore.getState().importProject(json)).toBe(true)
+    expect(Array.isArray(useCreditStore.getState().fonts)).toBe(true)
+    expect(useCreditStore.getState().fonts.length).toBeGreaterThan(0)
+  })
+
   it("backfills missing config keys from defaults on import", () => {
     const json = JSON.stringify({
       items: [{ id: "z", type: "title", text: "Z" }],
