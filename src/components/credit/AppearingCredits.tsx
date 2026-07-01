@@ -327,7 +327,7 @@ export function AppearingCredits({
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
     return visibleItems.map((item) => getAppearItemDuration(item, config))
-  }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration, config.lineRevealInterval, config.typewriterSpeed])
+  }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration, config.staggerLines, config.lineRevealInterval, config.typewriterSpeed])
 
   const totalDuration = React.useMemo(
     () => itemDurations.reduce((sum, d) => sum + d, 0),

@@ -36,7 +36,9 @@ export function FontManager() {
       ),
     )
     googleFonts.forEach((f) => {
-      const url = buildGoogleFontUrl(f.family, f.weights || ["400", "700"])
+      // f.name is the plain family name; f.family is the CSS value
+      // ("'Inter', sans-serif") and produces a malformed Google Fonts URL.
+      const url = buildGoogleFontUrl(f.name, f.weights || ["400", "700"])
       if (!existingHrefs.has(url)) {
         const link = document.createElement("link")
         link.rel = "stylesheet"
@@ -342,7 +344,9 @@ export function FontLoader() {
       ),
     )
     googleFonts.forEach((f) => {
-      const url = buildGoogleFontUrl(f.family, f.weights || ["400", "700"])
+      // f.name is the plain family name; f.family is the CSS value
+      // ("'Inter', sans-serif") and produces a malformed Google Fonts URL.
+      const url = buildGoogleFontUrl(f.name, f.weights || ["400", "700"])
       if (!existingHrefs.has(url)) {
         const link = document.createElement("link")
         link.rel = "stylesheet"
