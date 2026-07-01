@@ -143,7 +143,7 @@ const DEFAULT_FONTS: FontItem[] = [
     id: "font-abril",
     name: "Abril Fatface",
     source: "google",
-    family: "'Abril Fatface', display",
+    family: "'Abril Fatface', serif",
     category: "display",
     weights: ["400"],
   },

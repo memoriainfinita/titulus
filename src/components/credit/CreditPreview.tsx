@@ -92,6 +92,14 @@ export function CreditPreview() {
   const seekTarget = useCreditStore((s) => s.seekTarget)
   const setActiveItem = useCreditStore((s) => s.setActiveItem)
 
+  // Stable callbacks: inline lambdas here would re-trigger ScrollCredits' measure
+  // effect (new ResizeObserver) on every render.
+  const handleProgressChange = React.useCallback((p: number) => { progressRef.current = p }, [])
+  const handleLayoutChange = React.useCallback(
+    (l: NonNullable<typeof scrollLayoutRef.current>) => { scrollLayoutRef.current = l },
+    [],
+  )
+
   const navBounds = React.useMemo(
     () => itemProgressBounds(getVisibleItems(items).map((i) => getAppearItemDuration(i, config))),
     [items, config],
@@ -319,8 +327,8 @@ export function CreditPreview() {
               isPlaying={isPlaying}
               restartKey={previewKey}
               manualProgress={manualSeek}
-              onProgressChange={(p) => { progressRef.current = p }}
-              onLayoutChange={(l) => { scrollLayoutRef.current = l }}
+              onProgressChange={handleProgressChange}
+              onLayoutChange={handleLayoutChange}
             />
           ) : (
             <AppearingCredits
@@ -329,7 +337,7 @@ export function CreditPreview() {
               isPlaying={isPlaying}
               restartKey={previewKey}
               manualProgress={manualSeek}
-              onProgressChange={(p) => { progressRef.current = p }}
+              onProgressChange={handleProgressChange}
               onIndexChange={setCurrentItemIndex}
             />
           )}

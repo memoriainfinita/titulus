@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { motion } from "framer-motion"
-import { CreditItem, CreditConfig, CreditItemType } from "@/lib/credit/types"
+import { CreditItem, CreditConfig } from "@/lib/credit/types"
 import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
@@ -196,6 +196,7 @@ export function ScrollCredits({
     if (!isPlaying) return
     let raf: number
     let pauseTimer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
     let lastTime = performance.now()
     const durationSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
     const endPauseSec = config.endPause
@@ -209,6 +210,8 @@ export function ScrollCredits({
           case "run":
             return step.progress
           case "stop":
+            // No loop: kill the RAF loop instead of spinning at progress 1 forever.
+            stopped = true
             return 1
           case "wrap":
             return 0
@@ -224,7 +227,7 @@ export function ScrollCredits({
             return 1
         }
       })
-      raf = requestAnimationFrame(tick)
+      if (!stopped) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => {
