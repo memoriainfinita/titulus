@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Plus, Trash2, Upload, Search, Type } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl, buildFontFaceRule, fontFaceStyleId } from "@/lib/credit/fonts"
+import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl, buildFontFaceRule, buildSystemFontFamily, fontFaceStyleId } from "@/lib/credit/fonts"
 import { FontItem } from "@/lib/credit/types"
 import {
   Dialog,
@@ -91,6 +91,25 @@ export function FontManager() {
     toast.success(`Fuente "${family}" añadida`)
   }
 
+  const addSystemFont = (name: string, weights: string[]) => {
+    const family = buildSystemFontFamily(name)
+    const exists = fonts.some((f) => f.source === "system" && f.family === family)
+    if (exists) {
+      toast.info(`"${name}" ya está en tu lista`)
+      return
+    }
+    // System fonts live in the OS: no stylesheet or @font-face needed.
+    addFont({
+      id: uuid(),
+      name,
+      source: "system",
+      family,
+      category: "system",
+      weights,
+    })
+    toast.success(`Fuente "${name}" añadida`)
+  }
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
@@ -145,9 +164,10 @@ export function FontManager() {
           <DialogTitle>Gestión de fuentes</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="mine">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="mine">Mis fuentes ({fonts.length})</TabsTrigger>
             <TabsTrigger value="google">Google Fonts</TabsTrigger>
+            <TabsTrigger value="system">Sistema</TabsTrigger>
             <TabsTrigger value="upload">Subir fuente</TabsTrigger>
           </TabsList>
 
@@ -268,6 +288,61 @@ export function FontManager() {
                           onClick={() =>
                             addGoogleFont(font.family, font.category, font.weights)
                           }
+                        >
+                          {added ? (
+                            "Añadida"
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-1" />
+                              Añadir
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          </TabsContent>
+
+          {/* System fonts */}
+          <TabsContent value="system">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Fuentes instaladas en el sistema operativo. No requieren descarga,
+                pero el resultado depende de las fuentes disponibles en cada equipo.
+              </p>
+              <ScrollArea className="h-[50vh] pr-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SYSTEM_FONTS.map((font) => {
+                    const family = buildSystemFontFamily(font.family)
+                    const added = fonts.some(
+                      (f) => f.source === "system" && f.family === family,
+                    )
+                    return (
+                      <div
+                        key={font.family}
+                        className="flex items-center justify-between gap-2 p-3 rounded-md border bg-card"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium truncate text-sm">
+                              {font.family}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {font.category}
+                            </Badge>
+                          </div>
+                          <p className="text-lg truncate" style={{ fontFamily: family }}>
+                            {font.family}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={added ? "secondary" : "outline"}
+                          disabled={added}
+                          onClick={() => addSystemFont(font.family, font.weights)}
                         >
                           {added ? (
                             "Añadida"

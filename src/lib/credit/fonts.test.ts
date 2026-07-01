@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest"
 import {
   buildGoogleFontUrl,
-  buildCombinedGoogleFontUrl,
   buildFontFaceRule,
+  buildSystemFontFamily,
   fontFormatFromDataUrl,
   fontFaceStyleId,
 } from "./fonts"
@@ -72,14 +72,22 @@ describe("fontFaceStyleId", () => {
   })
 })
 
-describe("buildCombinedGoogleFontUrl", () => {
-  it("concatenates multiple families into one request", () => {
-    const url = buildCombinedGoogleFontUrl([
-      { family: "Inter", weights: ["400"] },
-      { family: "Playfair Display", weights: ["400", "700"] },
-    ])
-    expect(url).toContain("family=Inter")
-    expect(url).toContain("family=Playfair+Display:wght@400;700")
-    expect(url).toContain("display=swap")
+describe("buildSystemFontFamily", () => {
+  it("quotes multi-word names and appends their generic fallback", () => {
+    expect(buildSystemFontFamily("Times New Roman")).toBe("'Times New Roman', serif")
+    expect(buildSystemFontFamily("Courier New")).toBe("'Courier New', monospace")
+  })
+
+  it("leaves single-word names unquoted with their fallback", () => {
+    expect(buildSystemFontFamily("Arial")).toBe("Arial, sans-serif")
+    expect(buildSystemFontFamily("Georgia")).toBe("Georgia, serif")
+  })
+
+  it("returns system-ui as-is (already a generic family)", () => {
+    expect(buildSystemFontFamily("system-ui")).toBe("system-ui")
+  })
+
+  it("falls back to sans-serif for names outside the catalog", () => {
+    expect(buildSystemFontFamily("Whatever Font")).toBe("'Whatever Font', sans-serif")
   })
 })
