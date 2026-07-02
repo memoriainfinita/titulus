@@ -4,7 +4,8 @@ import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
 import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
-import { RichText } from "./RichText"
+import { RichText, LineSpans } from "./RichText"
+import { sliceRuns, plainToRich } from "@/lib/credit/rich"
 import {
   getAppearItemDuration,
   resolveAnimationType,
@@ -199,7 +200,7 @@ function LinesItem({
   const fontWeight = resolveFontWeight(item, config)
   const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
-  const lines = (item.text || " ").split("\n")
+  const richLines = item.rich ?? plainToRich(item.text || " ")
   return (
     <div
       style={{
@@ -220,7 +221,7 @@ function LinesItem({
         wordBreak: ts.wordBreak,
       }}
     >
-      {lines.map((line, i) => {
+      {richLines.map((line, i) => {
         // Manual/export: freeze each line's entrance at its point of the stagger,
         // derived from progress instead of the wall clock (frame-accurate).
         if (!live) {
@@ -229,7 +230,7 @@ function LinesItem({
               key={i}
               style={manualAppearStyle(animType, manualTimeIntoItem - i * revealInterval, animDuration, tunables)}
             >
-              {line || " "}
+              <LineSpans line={line} baseWeight={fontWeight} />
             </div>
           )
         }
@@ -242,7 +243,7 @@ function LinesItem({
           animate={shown ? variants.animate : variants.initial}
           transition={variants.transition}
         >
-          {line || " "}
+          <LineSpans line={line} baseWeight={fontWeight} />
         </motion.div>
         )
       })}
@@ -259,31 +260,31 @@ function TypewriterItem({
   live,
   isPlaying,
   speed,
-  manualTypedText,
+  manualTypedChars,
 }: {
   item: CreditItem
   config: CreditConfig
   live: boolean
   isPlaying: boolean
   speed: number
-  manualTypedText: string
+  manualTypedChars: number
 }) {
   const ts = resolveTextStyle(item, config)
+  const rich = item.rich ?? plainToRich(item.text || "")
   const text = item.text || ""
-  const [typed, setTyped] = React.useState("")
+  const [nTyped, setNTyped] = React.useState(0)
   React.useEffect(() => {
     if (!live || !isPlaying) return
-    let i = typed.length
     const id = setInterval(() => {
-      i += 1
-      setTyped(text.slice(0, i))
-      if (i >= text.length) clearInterval(id)
+      setNTyped((n) => {
+        if (n + 1 >= text.length) clearInterval(id)
+        return Math.min(text.length, n + 1)
+      })
     }, speed)
     return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, isPlaying, text, speed])
 
-  const shown = live ? typed : manualTypedText
+  const shownRich = sliceRuns(rich, live ? nTyped : manualTypedChars)
   return (
     <div
       style={{
@@ -304,7 +305,7 @@ function TypewriterItem({
         filter: resolveTextBlur(item, config) > 0 ? `blur(${resolveTextBlur(item, config)}px)` : undefined,
       }}
     >
-      {shown}
+      <RichText rich={shownRich} baseWeight={resolveFontWeight(item, config)} />
       {live ? (
         <motion.span
           animate={{ opacity: [1, 0] }}
@@ -350,7 +351,7 @@ export function AppearingCredits({
   React.useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
   const handleShown = React.useCallback(() => setShownTick((t) => t + 1), [])
   // Manual-mode (export/scrub) derived state. Live playback is owned by the child items.
-  const [manualTypedText, setManualTypedText] = React.useState("")
+  const [manualTypedChars, setManualTypedChars] = React.useState(0)
   const [manualTimeIntoItem, setManualTimeIntoItem] = React.useState(0)
 
   // Compute per-item durations and total duration
@@ -400,9 +401,9 @@ export function AppearingCredits({
     const foundType = foundItem ? resolveAnimationType(foundItem, config) : null
     if (foundItem && foundType === "typewriter") {
       const text = foundItem.text || ""
-      setManualTypedText(text.slice(0, typedCharsAt(timeIntoItem, text.length, resolveTypewriterSpeed(foundItem, config))))
+      setManualTypedChars(typedCharsAt(timeIntoItem, text.length, resolveTypewriterSpeed(foundItem, config)))
     } else {
-      setManualTypedText("")
+      setManualTypedChars(0)
     }
   }, [manualProgress, visibleItems, itemDurations, totalDuration, config, currentIndex])
 
@@ -411,7 +412,7 @@ export function AppearingCredits({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset intencional al reiniciar la preview; patrón verificado
     setCurrentIndex(0)
     setCycle((c) => c + 1) // force a fresh appearance of item 0
-    setManualTypedText("")
+    setManualTypedChars(0)
     setManualTimeIntoItem(0)
   }, [restartKey])
 
@@ -560,7 +561,7 @@ export function AppearingCredits({
               live={!manual}
               isPlaying={isPlaying}
               speed={resolveTypewriterSpeed(currentItem, config)}
-              manualTypedText={manualTypedText}
+              manualTypedChars={manualTypedChars}
             />
           ) : (
             <AppearItem item={currentItem} config={config} />
