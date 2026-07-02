@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { FFmpeg } from "@ffmpeg/ffmpeg"
-import { fetchFile, toBlobURL } from "@ffmpeg/util"
+import { toBlobURL } from "@ffmpeg/util"
 import { toPng } from "html-to-image"
 import { CreditConfig, CreditItem, CreditMode } from "@/lib/credit/types"
 

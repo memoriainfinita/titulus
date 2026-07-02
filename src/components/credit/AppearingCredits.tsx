@@ -298,7 +298,7 @@ function TypewriterItem({
 // visible" signal — valid for the first item too.
 function MountSignal({ onMount }: { onMount: () => void }) {
   const ref = React.useRef(onMount)
-  ref.current = onMount
+  React.useEffect(() => { ref.current = onMount }, [onMount]) // keep the latest callback (runs before the mount effect below)
   React.useEffect(() => { ref.current() }, []) // fire exactly once per mount (per appearance)
   return null
 }
@@ -327,7 +327,7 @@ export function AppearingCredits({
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
     return visibleItems.map((item) => getAppearItemDuration(item, config))
-  }, [visibleItems, config.animationType, config.animationDuration, config.pauseDuration, config.staggerLines, config.lineRevealInterval, config.typewriterSpeed])
+  }, [visibleItems, config])
 
   const totalDuration = React.useMemo(
     () => itemDurations.reduce((sum, d) => sum + d, 0),
@@ -364,6 +364,7 @@ export function AppearingCredits({
       }
       acc += itemDurations[i]
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deriva estado del scrub/export externo; patrón verificado
     if (foundIdx !== currentIndex) setCurrentIndex(foundIdx)
     const foundItem = visibleItems[foundIdx]
     const foundType = foundItem ? resolveAnimationType(foundItem, config) : null
@@ -382,6 +383,7 @@ export function AppearingCredits({
 
   // Reset on restart
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset intencional al reiniciar la preview; patrón verificado
     setCurrentIndex(0)
     setCycle((c) => c + 1) // force a fresh appearance of item 0
     setManualTypedText("")

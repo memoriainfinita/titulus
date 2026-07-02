@@ -12,7 +12,6 @@ import { InspectorPanel, PresetBar } from "@/components/credit/ConfigPanel"
 import { FontLoader } from "@/components/credit/FontManager"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Film, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCreditStore } from "@/lib/credit/store"
 

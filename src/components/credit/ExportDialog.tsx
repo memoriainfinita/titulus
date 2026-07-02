@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -149,7 +148,10 @@ export function ExportDialog({
   const SCALE_PRESETS = [1, 1.5, 2, 3]
 
   // Per-phase ETA: capturing is linear in frames; encoding maps to the 0.6-0.95
-  // slice of the overall bar reported by ffmpeg.
+  // slice of the overall bar reported by ffmpeg. Reading the ref and the clock
+  // during render is intentional: the dialog re-renders every second via the
+  // elapsed-time interval, so the ETA refreshes with it.
+  // eslint-disable-next-line react-hooks/refs, react-hooks/purity -- ver comentario
   const phaseElapsedMs = phaseStartRef.current != null ? performance.now() - phaseStartRef.current : 0
   let etaSeconds: number | null = null
   if (progress.phase === "capturing" && progress.totalFrames > 0) {

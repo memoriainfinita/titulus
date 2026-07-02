@@ -29,7 +29,6 @@ import { ItemInspector } from "./ItemInspector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
@@ -41,12 +40,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +59,6 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
-import { Badge } from "@/components/ui/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -123,7 +115,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function ColorInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+function ColorInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex items-center gap-2">
       <div className="relative w-9 h-9 rounded-md border overflow-hidden shrink-0">
@@ -169,6 +161,7 @@ export function InspectorPanel() {
   const [showGlobal, setShowGlobal] = React.useState(false)
 
   // Al cambiar de item, volver a la vista de item.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset intencional al cambiar la selección; patrón verificado
   React.useEffect(() => { setShowGlobal(false) }, [selectedItemId])
 
   const viewingItem = item && !showGlobal
@@ -403,7 +396,6 @@ function GlobalConfig() {
               <ColorInput
                 value={config.textColor}
                 onChange={(v) => updateConfig({ textColor: v })}
-                label="Texto"
               />
             </Field>
             <Separator />
@@ -420,14 +412,12 @@ function GlobalConfig() {
                   <ColorInput
                     value={config.gradientFrom}
                     onChange={(v) => updateConfig({ gradientFrom: v })}
-                    label="From"
                   />
                 </Field>
                 <Field label="Color final del degradado">
                   <ColorInput
                     value={config.gradientTo}
                     onChange={(v) => updateConfig({ gradientTo: v })}
-                    label="To"
                   />
                 </Field>
                 <Field label="Ángulo del degradado" hint={`${config.gradientAngle}°`}>
@@ -445,7 +435,6 @@ function GlobalConfig() {
                 <ColorInput
                   value={config.backgroundColor}
                   onChange={(v) => updateConfig({ backgroundColor: v })}
-                  label="Fondo"
                 />
               </Field>
             )}
@@ -466,7 +455,6 @@ function GlobalConfig() {
                   <ColorInput
                     value={config.textShadowColor}
                     onChange={(v) => updateConfig({ textShadowColor: v })}
-                    label="Sombra"
                   />
                 </Field>
                 <div className="grid grid-cols-3 gap-2">
@@ -645,7 +633,6 @@ function GlobalConfig() {
                 <ColorInput
                   value={config.dividerColor}
                   onChange={(v) => updateConfig({ dividerColor: v })}
-                  label="Separador"
                 />
               </Field>
             )}
@@ -827,7 +814,7 @@ function GlobalConfig() {
 
 // Quick presets the user can apply
 export function PresetBar() {
-  const { updateConfig, config, userPresets, saveUserPreset, deleteUserPreset, applyUserPreset } =
+  const { updateConfig, userPresets, saveUserPreset, deleteUserPreset, applyUserPreset } =
     useCreditStore()
   const [saveOpen, setSaveOpen] = React.useState(false)
   const [name, setName] = React.useState("")

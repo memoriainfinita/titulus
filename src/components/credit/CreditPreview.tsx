@@ -121,6 +121,7 @@ export function CreditPreview() {
     if (config.mode === "appearing") {
       const visible = getVisibleItems(items)
       const idx = visible.findIndex((i) => i.id === seekTarget.id)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reacciona a un evento efímero del store (seekTarget); patrón verificado
       if (idx >= 0) seekToItem(idx) // no-op si el item no es visible (spacer/divider)
       return
     }
@@ -231,7 +232,7 @@ export function CreditPreview() {
       try {
         await stageRef.current?.requestFullscreen()
         setFullscreen(true)
-      } catch (err) {
+      } catch {
         toast.error("No se pudo activar pantalla completa")
       }
     } else {
