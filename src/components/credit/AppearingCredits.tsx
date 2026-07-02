@@ -4,6 +4,7 @@ import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
 import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
+import { RichText } from "./RichText"
 import {
   getAppearItemDuration,
   resolveAnimationType,
@@ -140,7 +141,11 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
         wordBreak: ts.wordBreak,
       }}
     >
-      {item.text || "\u00A0"}
+      {item.rich ? (
+        <RichText rich={item.rich} baseWeight={fontWeight} />
+      ) : (
+        item.text || " "
+      )}
     </div>
   )
 }
