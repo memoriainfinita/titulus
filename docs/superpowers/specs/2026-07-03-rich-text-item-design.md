@@ -31,7 +31,7 @@ Fecha: 2026-07-03. Aprobado por el usuario en conversación, sección a sección
 
 - Sustituye al textarea del item de texto en `ItemInspector`.
 - Toolbar: selector de fuente (poblado con "Mis fuentes"), input de tamaño en px, botones B / I, swatch de color (reutiliza `ColorInput`). Botón "quitar formato" (la selección vuelve al estilo global).
-- Extensiones TipTap: `Document`, `Paragraph` (= línea), `Text`, `Bold`, `Italic`, `TextStyle` + `Color` + `FontFamily`; tamaño como atributo de `TextStyle` (extensión propia pequeña si la oficial no cubre px).
+- Extensiones TipTap: `Document`, `Paragraph` (= línea), `Text`, `Bold`, `Italic` y `TextStyleKit` de `@tiptap/extension-text-style` (TipTap v3), que ya incluye `FontFamily`, `FontSize` y `Color` oficiales — no hace falta extensión propia de tamaño. Verificado en docs de TipTap 2026-07-03.
 - Sin headings, listas ni enlaces. Enter = línea nueva. Pegado normalizado a texto plano con saltos de línea.
 - Guardado: `tiptapToRich()` → `updateItem` al perder foco o con debounce corto.
 
