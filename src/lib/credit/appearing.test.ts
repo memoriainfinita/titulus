@@ -8,8 +8,10 @@ import {
   resolveLineRevealInterval,
   resolveStaggerLines,
   isLineStaggered,
-  revealedLinesAt,
   typedCharsAt,
+  easeAppear,
+  manualAppearStyle,
+  AnimationTunables,
 } from "./appearing"
 import { DEFAULT_CONFIG, CreditItem, CreditConfig } from "./types"
 
@@ -234,27 +236,6 @@ describe("getAppearItemDuration (line-by-line)", () => {
   })
 })
 
-describe("revealedLinesAt", () => {
-  it("muestra 1 línea en t=0 y suma una por intervalo", () => {
-    expect(revealedLinesAt(0, 0.5, 3)).toBe(1)
-    expect(revealedLinesAt(0.5, 0.5, 3)).toBe(2)
-    expect(revealedLinesAt(1.0, 0.5, 3)).toBe(3)
-  })
-
-  it("satura en totalLines", () => {
-    expect(revealedLinesAt(99, 0.5, 3)).toBe(3)
-  })
-
-  it("una sola línea siempre es 1", () => {
-    expect(revealedLinesAt(0, 0.5, 1)).toBe(1)
-    expect(revealedLinesAt(5, 0.5, 1)).toBe(1)
-  })
-
-  it("intervalo <= 0 revela todo de golpe", () => {
-    expect(revealedLinesAt(0, 0, 4)).toBe(4)
-  })
-})
-
 describe("typedCharsAt", () => {
   it("texto vacío teclea 0", () => {
     expect(typedCharsAt(5, 0, 50)).toBe(0)
@@ -269,5 +250,63 @@ describe("typedCharsAt", () => {
   it("la duración de tecleo tiene un suelo de 2s", () => {
     // 4 chars * 50ms = 0.2s -> max(2, 0.2) = 2s; a 1s -> mitad -> 2 chars
     expect(typedCharsAt(1, 4, 50)).toBe(2)
+  })
+})
+
+describe("easeAppear", () => {
+  it("preserves the endpoints exactly", () => {
+    expect(easeAppear(0)).toBe(0)
+    expect(easeAppear(1)).toBe(1)
+  })
+
+  it("is monotonically increasing", () => {
+    expect(easeAppear(0.25)).toBeLessThan(easeAppear(0.5))
+    expect(easeAppear(0.5)).toBeLessThan(easeAppear(0.75))
+  })
+
+  it("clamps out-of-range inputs", () => {
+    expect(easeAppear(-1)).toBe(0)
+    expect(easeAppear(2)).toBe(1)
+  })
+})
+
+describe("manualAppearStyle", () => {
+  const t: AnimationTunables = { slide: 80, blur: 20, zoomFrom: 0.6, zoomTo: 1.4 }
+
+  it("fade goes from opacity 0 to opacity 1", () => {
+    expect(manualAppearStyle("fade", 0, 1.5, t)).toEqual({ opacity: 0 })
+    expect(manualAppearStyle("fade", 1.5, 1.5, t)).toEqual({ opacity: 1 })
+  })
+
+  it("slide-up starts displaced and lands at translateY(0px)", () => {
+    expect(manualAppearStyle("slide-up", 0, 1, t)).toEqual({ opacity: 0, transform: "translateY(80px)" })
+    expect(manualAppearStyle("slide-up", 1, 1, t)).toEqual({ opacity: 1, transform: "translateY(0px)" })
+  })
+
+  it("slide-down and slide-right displace in the opposite direction", () => {
+    expect(manualAppearStyle("slide-down", 0, 1, t).transform).toBe("translateY(-80px)")
+    expect(manualAppearStyle("slide-right", 0, 1, t).transform).toBe("translateX(-80px)")
+  })
+
+  it("zoom scales from zoomFrom to 1", () => {
+    expect(manualAppearStyle("zoom", 0, 1, t).transform).toBe("scale(0.6)")
+    expect(manualAppearStyle("zoom", 1, 1, t).transform).toBe("scale(1)")
+  })
+
+  it("blur clears the filter at the end", () => {
+    expect(manualAppearStyle("blur", 0, 1, t).filter).toBe("blur(20px)")
+    expect(manualAppearStyle("blur", 1, 1, t).filter).toBe("blur(0px)")
+  })
+
+  it("typewriter has no entrance style (always visible)", () => {
+    expect(manualAppearStyle("typewriter", 0, 1, t)).toEqual({})
+  })
+
+  it("non-positive duration jumps to the final state", () => {
+    expect(manualAppearStyle("fade", 0, 0, t)).toEqual({ opacity: 1 })
+  })
+
+  it("time before the item starts stays at the initial state", () => {
+    expect(manualAppearStyle("fade", -0.5, 1, t)).toEqual({ opacity: 0 })
   })
 })
