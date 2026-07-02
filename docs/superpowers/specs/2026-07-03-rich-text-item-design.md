@@ -19,6 +19,9 @@ Fecha: 2026-07-03. Aprobado por el usuario en conversación, sección a sección
 ## Modelo de datos
 
 - Item `text` con campo `rich`: JSON de líneas → runs. Cada línea es lista de `{ text, style? }`; `style` admite `fontFamily`, `fontSize`, `bold`, `italic`, `color`.
+- `bold` es booleano: pinta peso 700 sobre el `fontWeight` base global, que se conserva en la config. Sin selector numérico de peso por fragmento (decisión 2026-07-03; el modelo de runs lo admitiría más adelante).
+- `item.text` lo recalcula `updateItem` al guardar `rich` (líneas unidas con `\n`): `countItemLines`, duración y resalte de lista siguen leyendo `text` sin cambios.
+- Helper puro `plainToRich(text)` (una línea por `\n`, runs sin estilo): lo usan `addItem`, la demo y el futuro import CSV/TXT.
 - Formato propio, no el de TipTap. Conversores puros `tiptapToRich()` / `richToTiptap()` (testables sin DOM) traducen solo en la frontera del editor.
 - Run sin `style` hereda el estilo global de la config (fuente, tamaño base, color), como hoy.
 - `item.text` plano se mantiene derivado (concatenación de runs): typewriter, duración y resalte de lista siguen funcionando.
@@ -36,7 +39,8 @@ Fecha: 2026-07-03. Aprobado por el usuario en conversación, sección a sección
 
 - Componente puro `RichText` (líneas → `<span>` por run, estilo del run fusionado sobre el base) sustituye a `{item.text}` en `CreditLine` (scroll), `AppearItem` y `LinesItem` (aparición).
 - Línea a línea: escalona las líneas del JSON rico; cada línea pinta sus runs. Mismo motor actual.
-- Typewriter: helper puro `sliceRuns(runs, nChars)` corta la secuencia aplanada preservando formato; `typedCharsAt` sigue valiendo (longitud = texto plano derivado).
+- Typewriter: helper puro `sliceRuns(runs, nChars)` corta la secuencia aplanada preservando formato; `typedCharsAt` sigue valiendo (longitud = texto plano derivado). Los `\n` cuentan como un carácter tecleado y el render respeta las líneas.
+- Item o línea sin contenido: pinta ` ` para reservar altura (misma regla que hoy con `item.text`), por línea.
 - Export determinista (fix 2026-07-02) intacto: `manualAppearStyle` actúa a nivel contenedor/línea; los runs se pintan estáticos debajo.
 - Reparto de estilo: al run → fuente, tamaño, negrita, cursiva, color; al item → alineación, interletraje, interlineado, mayúsculas, blur, sombra, wrap, animación; a la config → fallbacks globales y el resto.
 - Overrides por item de fuente/tamaño/color/peso desaparecen (absorbidos por runs); `resolveTextStyle` se simplifica.
@@ -44,12 +48,13 @@ Fecha: 2026-07-03. Aprobado por el usuario en conversación, sección a sección
 ## Limpieza
 
 - `CreditItemType` = `text | spacer | divider | image`.
-- Fuera: `fontSizeTitle/Subtitle/Name/Role/Description` de la config (sustituidos por `fontSize` base global), `getFontSize`/`getFontWeight` del store, etiquetas/iconos de tipos viejos, campos por item absorbidos por runs.
+- Fuera: `fontSizeTitle/Subtitle/Name/Role/Description` de la config (sustituidos por `fontSize` base global, default 36 — el tamaño actual de "nombre"), `getFontSize`/`getFontWeight` del store, etiquetas/iconos de tipos viejos, campos por item absorbidos por runs.
+- Borrado de fuentes: bloqueado si la fuente está activa globalmente (regla actual) o usada por algún run — helper puro `fontInUseByItems(items, family)`, con aviso al usuario.
 - `DEFAULT_ITEMS` regenerado como items ricos que demuestren la feature.
 - Menú "+" con 4 entradas.
-- `importProject`: la validación acepta solo los 4 tipos nuevos (los viejos se rechazan como cualquier tipo desconocido).
+- `importProject`: la validación acepta solo los 4 tipos nuevos (los viejos se rechazan como cualquier tipo desconocido) y valida la estructura de `rich` (líneas → runs con `text` string y `style` objeto opcional); un `rich` corrupto rechaza el archivo, no revienta el render.
 
 ## Tests
 
-- Conversores TipTap↔runs, `sliceRuns`, roundtrip de `rich` en el store, validación de import actualizada.
+- Conversores TipTap↔runs, `sliceRuns` (incl. `\n`), `plainToRich`, `fontInUseByItems`, roundtrip de `rich` en el store, validación de import actualizada (incl. `rich` corrupto).
 - `tsc`, lint y `next build` limpios en cada tarea.
