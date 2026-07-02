@@ -86,6 +86,23 @@ describe("store reducers", () => {
     expect(selectedItemId).toBe(items[3].id)
   })
 
+  it("addItem('text') creates a rich item with placeholder text and rich in sync", () => {
+    useCreditStore.setState({ items: [] })
+    useCreditStore.getState().addItem("text")
+    const it0 = useCreditStore.getState().items[0]
+    expect(it0.type).toBe("text")
+    expect(it0.text).toBe("Nuevo texto")
+    expect(it0.rich).toEqual([[{ text: "Nuevo texto" }]])
+  })
+
+  it("updateItem with a rich patch recomputes the derived plain text", () => {
+    useCreditStore.setState({ items: [{ id: "r", type: "text", text: "", rich: [[{ text: "" }]] }] })
+    useCreditStore.getState().updateItem("r", {
+      rich: [[{ text: "Hola " }, { text: "mundo", style: { bold: true } }], [{ text: "adiós" }]],
+    })
+    expect(useCreditStore.getState().items[0].text).toBe("Hola mundo\nadiós")
+  })
+
   it("addItem inserts at a given index", () => {
     useCreditStore.getState().addItem("name", "Insertado", 1)
     const { items } = useCreditStore.getState()

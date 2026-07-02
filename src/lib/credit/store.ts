@@ -14,6 +14,7 @@ import {
   UserPreset,
   CREDIT_TYPE_LABELS,
 } from "./types"
+import { plainToRich, richToPlain } from "./rich"
 
 function isPlainObject(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x)
@@ -197,7 +198,11 @@ export const useCreditStore = create<CreditState>()(
                   : type === "description"
                     ? "Descripción del rol o detalle"
                     : ""
-        const newItem: CreditItem = { id: uuid(), type, text: text ?? placeholder }
+        const resolved = text ?? (type === "text" ? "Nuevo texto" : placeholder)
+        const newItem: CreditItem =
+          type === "text"
+            ? { id: uuid(), type, text: resolved, rich: plainToRich(resolved) }
+            : { id: uuid(), type, text: resolved }
         set((state) => {
           if (index === undefined) {
             return { items: [...state.items, newItem], selectedItemId: newItem.id }
@@ -210,9 +215,13 @@ export const useCreditStore = create<CreditState>()(
 
       updateItem: (id, patch) =>
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, ...patch } : item,
-          ),
+          items: state.items.map((item) => {
+            if (item.id !== id) return item
+            const next = { ...item, ...patch }
+            // rich is the source of truth for text items: text is derived.
+            if (patch.rich) next.text = richToPlain(patch.rich)
+            return next
+          }),
         })),
 
       removeItem: (id) =>
