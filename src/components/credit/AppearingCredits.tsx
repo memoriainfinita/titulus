@@ -13,8 +13,8 @@ import {
   resolveLineRevealInterval,
   isLineStaggered,
   countItemLines,
-  revealedLinesAt,
   typedCharsAt,
+  manualAppearStyle,
   AnimationTunables,
 } from "@/lib/credit/appearing"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -156,7 +156,10 @@ function LinesItem({
   isPlaying,
   totalLines,
   revealInterval,
-  manualRevealedLines,
+  animType,
+  animDuration,
+  tunables,
+  manualTimeIntoItem,
 }: {
   item: CreditItem
   config: CreditConfig
@@ -165,7 +168,12 @@ function LinesItem({
   isPlaying: boolean
   totalLines: number
   revealInterval: number
-  manualRevealedLines: number
+  animType: AnimationType
+  animDuration: number
+  tunables: AnimationTunables
+  // Manual/export mode: seconds into the item, so each line's entrance can be
+  // frozen deterministically at its own point of the stagger.
+  manualTimeIntoItem: number
 }) {
   // Live reveal: this component mounts only when the item is visible (mode="wait"),
   // so the interval starts at the right moment. Pause freezes, resume continues.
@@ -180,7 +188,6 @@ function LinesItem({
     }, revealInterval * 1000)
     return () => clearInterval(id)
   }, [live, isPlaying, totalLines, revealInterval])
-  const revealedLines = live ? revealed : manualRevealedLines
 
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
@@ -209,15 +216,26 @@ function LinesItem({
       }}
     >
       {lines.map((line, i) => {
-        const shown = i < revealedLines
-        // Live: animate each line with the chosen variants. Manual: jump to the
-        // final state with no transition (frame-accurate for export).
+        // Manual/export: freeze each line's entrance at its point of the stagger,
+        // derived from progress instead of the wall clock (frame-accurate).
+        if (!live) {
+          return (
+            <div
+              key={i}
+              style={manualAppearStyle(animType, manualTimeIntoItem - i * revealInterval, animDuration, tunables)}
+            >
+              {line || " "}
+            </div>
+          )
+        }
+        // Live: animate each line with the chosen variants as the interval reveals it.
+        const shown = i < revealed
         return (
         <motion.div
           key={i}
-          initial={live ? variants.initial : false}
+          initial={variants.initial}
           animate={shown ? variants.animate : variants.initial}
-          transition={live ? variants.transition : { duration: 0 }}
+          transition={variants.transition}
         >
           {line || " "}
         </motion.div>
@@ -282,13 +300,19 @@ function TypewriterItem({
       }}
     >
       {shown}
-      <motion.span
-        animate={{ opacity: [1, 0] }}
-        transition={{ duration: 0.5, repeat: Infinity }}
-        style={{ display: "inline-block", marginLeft: "0.05em" }}
-      >
-        |
-      </motion.span>
+      {live ? (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity }}
+          style={{ display: "inline-block", marginLeft: "0.05em" }}
+        >
+          |
+        </motion.span>
+      ) : (
+        // Manual/export: a wall-clock blinking cursor is non-deterministic per
+        // captured frame; keep it steadily visible instead.
+        <span style={{ display: "inline-block", marginLeft: "0.05em" }}>|</span>
+      )}
     </div>
   )
 }
@@ -322,7 +346,7 @@ export function AppearingCredits({
   const handleShown = React.useCallback(() => setShownTick((t) => t + 1), [])
   // Manual-mode (export/scrub) derived state. Live playback is owned by the child items.
   const [manualTypedText, setManualTypedText] = React.useState("")
-  const [manualRevealedLines, setManualRevealedLines] = React.useState(1)
+  const [manualTimeIntoItem, setManualTimeIntoItem] = React.useState(0)
 
   // Compute per-item durations and total duration
   const itemDurations = React.useMemo(() => {
@@ -366,6 +390,7 @@ export function AppearingCredits({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deriva estado del scrub/export externo; patrón verificado
     if (foundIdx !== currentIndex) setCurrentIndex(foundIdx)
+    setManualTimeIntoItem(timeIntoItem)
     const foundItem = visibleItems[foundIdx]
     const foundType = foundItem ? resolveAnimationType(foundItem, config) : null
     if (foundItem && foundType === "typewriter") {
@@ -374,12 +399,7 @@ export function AppearingCredits({
     } else {
       setManualTypedText("")
     }
-    if (foundItem && isLineStaggered(foundItem, config)) {
-      setManualRevealedLines(
-        revealedLinesAt(timeIntoItem, resolveLineRevealInterval(foundItem, config), countItemLines(foundItem)),
-      )
-    }
-  }, [manualProgress, visibleItems, itemDurations, totalDuration, config, config.animationType, config.typewriterSpeed, config.staggerLines, config.lineRevealInterval, currentIndex])
+  }, [manualProgress, visibleItems, itemDurations, totalDuration, config, currentIndex])
 
   // Reset on restart
   React.useEffect(() => {
@@ -387,7 +407,7 @@ export function AppearingCredits({
     setCurrentIndex(0)
     setCycle((c) => c + 1) // force a fresh appearance of item 0
     setManualTypedText("")
-    setManualRevealedLines(1)
+    setManualTimeIntoItem(0)
   }, [restartKey])
 
   // Advance is anchored to visibility: scheduled when the current item is shown
@@ -454,13 +474,12 @@ export function AppearingCredits({
     )
   }
 
+  const manual = manualProgress !== null
   const currentItem = visibleItems[Math.min(currentIndex, visibleItems.length - 1)]
   const currentAnimType = resolveAnimationType(currentItem, config)
-  const variants = getVariants(
-    currentAnimType,
-    resolveAnimationDuration(currentItem, config),
-    resolveAnimationTunables(currentItem, config),
-  )
+  const animDuration = resolveAnimationDuration(currentItem, config)
+  const tunables = resolveAnimationTunables(currentItem, config)
+  const variants = getVariants(currentAnimType, animDuration, tunables)
   const staggered = isLineStaggered(currentItem, config)
   // When revealing line by line, each line plays the animation itself, so the
   // outer container holds steady (like typewriter) to avoid animating twice.
@@ -502,17 +521,9 @@ export function AppearingCredits({
         </>
       )}
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`${currentItem.id}-${currentIndex}-${cycle}-${restartKey}`}
-          initial={containerVariants.initial}
-          animate={containerVariants.animate}
-          exit={containerVariants.exit}
-          transition={containerVariants.transition}
-          className="w-full flex flex-col items-center justify-center px-4"
-        >
-          <MountSignal onMount={handleShown} />
-          {currentItem.type === "image" ? (
+      {(() => {
+        const content =
+          currentItem.type === "image" ? (
             currentItem.imageSrc ? (
               <div className="w-full flex justify-center" style={{ padding: `0 ${config.paddingX}px` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -528,26 +539,58 @@ export function AppearingCredits({
               item={currentItem}
               config={config}
               variants={variants}
-              live={manualProgress === null}
+              live={!manual}
               isPlaying={isPlaying}
               totalLines={countItemLines(currentItem)}
               revealInterval={resolveLineRevealInterval(currentItem, config)}
-              manualRevealedLines={manualRevealedLines}
+              animType={currentAnimType}
+              animDuration={animDuration}
+              tunables={tunables}
+              manualTimeIntoItem={manualTimeIntoItem}
             />
           ) : currentAnimType === "typewriter" ? (
             <TypewriterItem
               item={currentItem}
               config={config}
-              live={manualProgress === null}
+              live={!manual}
               isPlaying={isPlaying}
               speed={resolveTypewriterSpeed(currentItem, config)}
               manualTypedText={manualTypedText}
             />
           ) : (
             <AppearItem item={currentItem} config={config} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+          )
+
+        // Manual/export: no AnimatePresence or wall-clock transitions. The entrance
+        // is frozen at manualTimeIntoItem so every captured frame is deterministic
+        // (staggered items animate per line inside LinesItem instead).
+        if (manual) {
+          return (
+            <div
+              className="w-full flex flex-col items-center justify-center px-4"
+              style={staggered ? undefined : manualAppearStyle(currentAnimType, manualTimeIntoItem, animDuration, tunables)}
+            >
+              {content}
+            </div>
+          )
+        }
+
+        return (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${currentItem.id}-${currentIndex}-${cycle}-${restartKey}`}
+              initial={containerVariants.initial}
+              animate={containerVariants.animate}
+              exit={containerVariants.exit}
+              transition={containerVariants.transition}
+              className="w-full flex flex-col items-center justify-center px-4"
+            >
+              <MountSignal onMount={handleShown} />
+              {content}
+            </motion.div>
+          </AnimatePresence>
+        )
+      })()}
     </div>
   )
 }
