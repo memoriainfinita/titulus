@@ -221,6 +221,24 @@ describe("project import/export", () => {
     expect(useCreditStore.getState().importProject(json)).toBe(false)
   })
 
+  it("rejects a text item with corrupt rich payload", () => {
+    const json = JSON.stringify({
+      items: [{ id: "a", type: "text", text: "x", rich: [{ text: "not-a-line" }] }],
+      config: {},
+    })
+    expect(useCreditStore.getState().importProject(json)).toBe(false)
+  })
+
+  it("accepts and round-trips a valid rich item", () => {
+    useCreditStore.setState({
+      items: [{ id: "a", type: "text", text: "Hola", rich: [[{ text: "Hola", style: { bold: true, fontSize: 20 } }]] }],
+    })
+    const json = useCreditStore.getState().exportProject()
+    useCreditStore.setState({ items: [], config: { ...DEFAULT_CONFIG } })
+    expect(useCreditStore.getState().importProject(json)).toBe(true)
+    expect(useCreditStore.getState().items[0].rich).toEqual([[{ text: "Hola", style: { bold: true, fontSize: 20 } }]])
+  })
+
   it("falls back to default fonts when fonts is not an array", () => {
     const json = JSON.stringify({
       items: [{ id: "a", type: "name", text: "x" }],

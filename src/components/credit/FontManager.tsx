@@ -5,6 +5,7 @@ import { Plus, Trash2, Upload, Search, Type } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl, buildFontFaceRule, buildSystemFontFamily, fontFaceStyleId } from "@/lib/credit/fonts"
 import { FontItem } from "@/lib/credit/types"
+import { fontInUseByItems } from "@/lib/credit/rich"
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import { toast } from "sonner"
 import { v4 as uuid } from "uuid"
 
 export function FontManager() {
-  const { fonts, addFont, removeFont, config, updateConfig } = useCreditStore()
+  const { fonts, addFont, removeFont, config, updateConfig, items } = useCreditStore()
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 
@@ -225,6 +226,10 @@ export function FontManager() {
                         onClick={() => {
                           if (config.fontFamily === font.family) {
                             toast.error("No puedes eliminar la fuente activa")
+                            return
+                          }
+                          if (fontInUseByItems(items, font.family)) {
+                            toast.error("No puedes eliminarla: la usa algún fragmento de texto")
                             return
                           }
                           removeFont(font.id)

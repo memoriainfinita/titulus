@@ -14,7 +14,7 @@ import {
   UserPreset,
   CREDIT_TYPE_LABELS,
 } from "./types"
-import { plainToRich, richToPlain } from "./rich"
+import { plainToRich, richToPlain, isValidRich } from "./rich"
 
 function isPlainObject(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x)
@@ -29,7 +29,8 @@ export function isValidImportedItems(x: unknown): x is CreditItem[] {
       typeof it.id === "string" &&
       typeof it.type === "string" &&
       it.type in CREDIT_TYPE_LABELS &&
-      typeof it.text === "string",
+      typeof it.text === "string" &&
+      (it.rich === undefined || isValidRich(it.rich)),
   )
 }
 
