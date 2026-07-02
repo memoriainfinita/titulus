@@ -328,7 +328,7 @@ export function CreditEditor() {
               <TypeIcon className="h-10 w-10 mx-auto mb-2 opacity-30" />
               No hay créditos todavía.
               <br />
-              Haz clic en "Añadir crédito" para empezar.
+              Haz clic en &quot;Añadir crédito&quot; para empezar.
             </div>
           )}
           {items.map((item, idx) => (

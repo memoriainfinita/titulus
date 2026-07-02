@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
 import { CreditItem, CreditConfig } from "@/lib/credit/types"
 import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
@@ -187,6 +186,7 @@ export function ScrollCredits({
 
   // Reset progress on restart
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset intencional al reiniciar la preview; patrón verificado
     setInternalProgress(0)
   }, [restartKey])
 
