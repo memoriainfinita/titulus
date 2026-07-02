@@ -10,6 +10,7 @@ import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
 import { resolveImageWidth } from "@/lib/credit/image"
 import { resolveSafeInset } from "@/lib/credit/safeMargins"
+import { RichText } from "./RichText"
 
 interface ScrollCreditsProps {
   items: CreditItem[]
@@ -121,6 +122,7 @@ const CreditLine = React.forwardRef<HTMLDivElement, { item: CreditItem; config: 
       </div>
     )
   }
+  const fontWeight = resolveFontWeight(item, config)
   return (
     <div
       ref={ref}
@@ -130,7 +132,11 @@ const CreditLine = React.forwardRef<HTMLDivElement, { item: CreditItem; config: 
         marginBottom: `${config.itemSpacing}px`,
       }}
     >
-      {item.text || "\u00A0"}
+      {item.rich ? (
+        <RichText rich={item.rich} baseWeight={fontWeight} />
+      ) : (
+        item.text || "\u00A0"
+      )}
     </div>
   )
 })
