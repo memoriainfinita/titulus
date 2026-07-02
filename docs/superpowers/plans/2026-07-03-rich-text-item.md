@@ -502,7 +502,7 @@ In `store.ts`:
 ```
 
 In `CreditEditor.tsx`:
-- Add `Type as TypeItemIcon` to the lucide import (the file already imports `Type as TypeIcon` or similar — check the imports; if `Type` is taken, alias `CaseSensitive`); add `text: TypeItemIcon,` to `TYPE_ICONS` and `"text"` as the first entry of `ADD_MENU_TYPES`.
+- The file already imports `Type as TypeIcon` from lucide (used by the empty state). Reuse it: add `text: TypeIcon,` as the first entry of `TYPE_ICONS` and `"text"` as the first entry of `ADD_MENU_TYPES`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -869,7 +869,7 @@ export function RichTextEditor({
       {item.type === "text" ? (
         <RichTextEditor
           itemId={item.id}
-          rich={item.rich ?? [[{ text: item.text }]]}
+          rich={item.rich ?? plainToRich(item.text)}
           onChange={(rich) => updateItem(item.id, { rich })}
         />
       ) : item.type === "title" || item.type === "subtitle" ? (
@@ -879,7 +879,7 @@ export function RichTextEditor({
       )}
 ```
 
-Add the import: `import { RichTextEditor } from "./RichTextEditor"`.
+Add the imports: `import { RichTextEditor } from "./RichTextEditor"` and `import { plainToRich } from "@/lib/credit/rich"`.
 
 - [ ] **Step 3: Verify**
 
@@ -983,6 +983,7 @@ The big mechanical sweep. Everything below happens in ONE task because the type 
 
 - [ ] **Step 1: Update the tests first** (RED by compile):
   - Global replace in ALL test files: `type: "title"`, `type: "subtitle"`, `type: "name"`, `type: "role"`, `type: "description"` → `type: "text"`.
+  - `store.test.ts`: the `addItem` placeholder test asserts legacy strings ("Nombre Apellido", etc.) — rewrite it to `addItem("text")` inserting `text: "Nuevo texto"` with `rich: [[{ text: "Nuevo texto" }]]` (this may already be covered by the Task 3 test; if so, delete the legacy-placeholder test instead of rewriting it).
   - `store.test.ts`: delete tests covering removed per-item overrides (`preserves per-item text overrides...` fontSize/color/fontFamily assertions; `fontWeight` roundtrips) and any `getFontSize`/`getFontWeight`/`resolveFontWeight` describes; keep letterSpacing/lineHeight roundtrip assertions by moving them onto a `type: "text"` item if they live in a deleted test.
   - `textStyle.test.ts`: rewrite assertions — resolved `fontSize` comes from `config.fontSize`, `fontFamily` from `config.fontFamily`, `color` from `config.textColor`; per-item `letterSpacing`, `lineHeight`, `noWrap`, `textBoxWidth` overrides keep their existing tests.
   - Add to `store.test.ts` (config backfill):
@@ -1079,5 +1080,5 @@ git commit -m "feat!: single rich text item replaces typed text items"
 
 - [ ] **Step 1: Full gate** — `pnpm exec tsc --noEmit && pnpm exec eslint . && pnpm test:run && pnpm build` → all clean/green.
 - [ ] **Step 2: Manual smoke** (`pnpm dev`, kill :3000 afterwards): demo items render formatted in both modes; editor toolbar formats selections; typewriter/stagger/scrub/export dialog still work; "Vaciar lista" + "Ejemplo" reload the rich demo; hard reset of localStorage loads clean.
-- [ ] **Step 3: Update `state.md`** — History entry (feature, decisions, suite count, commits) and mark the TODO if one exists; flag pending interactive verification by the user.
+- [ ] **Step 3: Update `state.md`** — History entry (feature, decisions, suite count, commits) and mark the TODO if one exists; flag pending interactive verification by the user. Note that `creditos-la-vida-en-un-segundo.json` (legacy typed items) no longer imports; regenerating it as rich items is a separate TODO if the user wants to keep it.
 - [ ] **Step 4: Commit** — `git add state.md && git commit -m "docs: session log for rich text item"`.
