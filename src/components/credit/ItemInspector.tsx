@@ -12,6 +12,8 @@ import { useCreditStore, getFontSize } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType } from "@/lib/credit/types"
 import { resolveAnimationType, resolveStaggerLines } from "@/lib/credit/appearing"
+import { plainToRich } from "@/lib/credit/rich"
+import { RichTextEditor } from "./RichTextEditor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -516,7 +518,13 @@ export function ItemInspector({ item }: { item: CreditItem }) {
   // Text items: title / subtitle / name / role / description
   return (
     <div className="space-y-2">
-      {item.type === "title" || item.type === "subtitle" ? (
+      {item.type === "text" ? (
+        <RichTextEditor
+          itemId={item.id}
+          rich={item.rich ?? plainToRich(item.text)}
+          onChange={(rich) => updateItem(item.id, { rich })}
+        />
+      ) : item.type === "title" || item.type === "subtitle" ? (
         <Input
           value={item.text}
           onChange={(e) => updateItem(item.id, { text: e.target.value })}
