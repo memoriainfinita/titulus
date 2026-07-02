@@ -49,6 +49,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: string }>> = {
+  text: TypeIcon,
   title: Heading1,
   subtitle: Heading2,
   name: User,
@@ -60,6 +61,7 @@ const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: strin
 }
 
 const ADD_MENU_TYPES: CreditItemType[] = [
+  "text",
   "title",
   "subtitle",
   "name",

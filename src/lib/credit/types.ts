@@ -1,6 +1,7 @@
 // Type definitions for the credit titles generator
 
 export type CreditItemType =
+  | "text"
   | "title"
   | "subtitle"
   | "name"
@@ -251,6 +252,7 @@ export const DEFAULT_CONFIG: CreditConfig = {
 }
 
 export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
+  text: "Texto",
   title: "Título principal",
   subtitle: "Subtítulo",
   name: "Nombre",
@@ -262,6 +264,7 @@ export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
 }
 
 export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
+  text: "Type",
   title: "Heading1",
   subtitle: "Heading2",
   name: "User",
