@@ -26,10 +26,31 @@ export type AnimationType =
 
 export type DividerStyle = "solid" | "dashed" | "dotted"
 
+// Rich text model: an item's text as lines of styled runs.
+// A run without style inherits the global config (font, size, color).
+export interface RichStyle {
+  fontFamily?: string
+  fontSize?: number // px
+  bold?: boolean // renders weight 700 over config.fontWeight
+  italic?: boolean
+  color?: string
+}
+
+export interface RichRun {
+  text: string
+  style?: RichStyle
+}
+
+export type RichLine = RichRun[]
+export type Rich = RichLine[]
+
 export interface CreditItem {
   id: string
   type: CreditItemType
   text: string
+  // Rich text (lines -> styled runs). When present, scenes render it instead of
+  // `text`; `text` is kept in sync (derived) for durations, list rows, typewriter length.
+  rich?: Rich
   align?: Alignment // override global alignment
   bold?: boolean
   italic?: boolean
