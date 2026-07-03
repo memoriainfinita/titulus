@@ -21,10 +21,17 @@ Single interleaved loop per frame (no capture-all then encode-all phases):
 
 1. `setManualProgress(p)` — existing deterministic manual render path.
 2. Two RAFs + settle delay (as today).
-3. `captureFrame(stageElement)` → html-to-image `toCanvas` with `width`/`height`/`pixelRatio`/`fontEmbedCSS`/`skipFonts`/`backgroundColor` as today, without `cacheBust`.
-4. `canvasSource.add(i / fps, 1 / fps)` — Mediabunny encodes (hardware) while the loop captures the next frame.
+3. `captureFrame(stageElement)` → html-to-image `toCanvas` with `width`/`height`/`pixelRatio`/`fontEmbedCSS`/`skipFonts`/`backgroundColor` as today, without `cacheBust`. Returns a new canvas per frame.
+4. `drawImage(captured)` onto the persistent staging canvas (see below).
+5. `await canvasSource.add(i / fps, 1 / fps)` — the returned promise applies encoder backpressure; each add MUST be awaited or the encode queue grows unbounded in memory.
 
-Mediabunny objects: `Output` + `Mp4OutputFormat` + `BufferTarget`; `CanvasSource` with `codec: "avc"`, `hardwareAcceleration: "prefer-hardware"`. After the loop: `output.finalize()` → MP4 blob. No PNG step, no MEMFS, no frame accumulation in memory (only compressed video).
+Mediabunny objects: `Output` + `Mp4OutputFormat` (with explicit `fastStart` option — cheap with `BufferTarget`, keeps the `-movflags +faststart` behavior of the old pipeline) + `BufferTarget`; `CanvasSource` with `codec: "avc"`, `hardwareAcceleration: "prefer-hardware"`. After the loop: `output.finalize()` → MP4 blob. No PNG step, no MEMFS, no frame accumulation in memory (only compressed video).
+
+## Staging canvas
+
+`CanvasSource` wraps ONE canvas that is repeatedly updated; html-to-image returns a NEW canvas per frame. A persistent staging canvas sits between them: created once per export, each frame is drawn onto it with `drawImage` before `canvasSource.add()`.
+
+Its dimensions are `evenDim(stageWidth * scale) × evenDim(stageHeight * scale)` — H.264/yuv420p requires even dimensions. The old pipeline enforced this with the FFmpeg filter `scale=trunc(iw/2)*2:trunc(ih/2)*2`, which disappears with FFmpeg; the staging canvas takes over that guarantee, and its size finally matches what the dialog already displays (`evenDim` in `ExportDialog.tsx`).
 
 ## Quality mapping
 
@@ -32,12 +39,12 @@ Mediabunny objects: `Output` + `Mp4OutputFormat` + `BufferTarget`; `CanvasSource
 
 ## Support check and errors
 
-- Before starting: check an `avc` encoder exists for the target dimensions (Mediabunny support helper). If not, the dialog shows a clear error before any work happens.
-- Cancel: the loop checks `cancelRef` between frames (encoding is per-frame; there is no long uninterruptible `exec`). On cancel, discard the output. `ffmpeg.terminate()` logic deleted.
+- Support check runs when the dialog OPENS (not on Start): if no `avc` encoder exists for the target dimensions (Mediabunny support helper), the Start button is disabled with a clear message — the user must not discover the failure after picking a save destination. Residual risk: on Firefox, H.264 encoding can be platform-dependent even with WebCodecs present; the runtime check covers it.
+- Cancel: the loop checks `cancelRef` between frames (encoding is per-frame; there is no long uninterruptible `exec`). On cancel, call `output.cancel()` (frees encoder resources) — not just dropping the reference. `ffmpeg.terminate()` logic deleted.
 
 ## Progress / ETA
 
-Phases reduce to: `rendering` (0→0.95, per frame) and `finalizing` (mux flush). `loading-ffmpeg` and separate `encoding` phases removed. `exportTiming.ts` (linear ETA) works unchanged.
+Phases reduce to: `rendering` (0→0.95, per frame) and `finalizing` (mux flush). `loading-ffmpeg` and separate `encoding` phases removed. The pure module `exportTiming.ts` works unchanged, but `ExportDialog` must be reworked: its per-phase ETA logic (hardcoded 0.6/0.35 windows for `capturing` vs `encoding`, `ExportDialog.tsx:137-160`) collapses to a single linear phase; `PhaseIcon` and per-phase copy update accordingly.
 
 ## Fonts (first-class requirement)
 
@@ -51,7 +58,7 @@ Three font sources must survive capture:
 
 - Deps `@ffmpeg/ffmpeg`, `@ffmpeg/util` (package.json, pnpm-workspace approvals if present).
 - `FFMPEG_BASE_URL`, CRF `QUALITY_PRESETS`, MEMFS cleanup code, `loadFfmpeg`, webm branch.
-- `format: "webm"` in `ExportOptions` and its UI in `ExportDialog`.
+- `format: "webm"` in `ExportOptions` and its UI in `ExportDialog`, including the derived filename extension and the save picker `accept` types (`ExportDialog.tsx:170-185`).
 
 ## Kept
 
