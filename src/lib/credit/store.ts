@@ -333,7 +333,10 @@ export const useCreditStore = create<CreditState>()(
       },
     }),
     {
-      name: "credit-titles-store",
+      // Parametrized per build (NEXT_PUBLIC_ so Next.js inlines it client-side):
+      // parallel deploys under the same origin (e.g. /credits/ and /credits-rich/)
+      // would otherwise share — and corrupt — each other's persisted state.
+      name: process.env.NEXT_PUBLIC_STORE_KEY || "credit-titles-store",
       // Don't persist runtime UI state
       partialize: (state) => ({
         items: state.items,
