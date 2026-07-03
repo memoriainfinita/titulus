@@ -78,6 +78,8 @@
 
 - 2026-07-03: despliegue paralelo en la VM para verificación (detalle homelab en `~/.homelab/state.md`): `next.config.ts` gana `EXPORT_BASE` (default `/credits`, commit `3d79f00`) y `store.ts` gana `NEXT_PUBLIC_STORE_KEY` para la clave del persist (default `credit-titles-store`, commit `8524677`) — sin la segunda, dos deploys bajo el mismo origen comparten localStorage y el estado legacy de la versión vieja crasheaba la nueva (icono `undefined` por tipos de item eliminados; diagnosticado porque en incógnito cargaba). `/credits-rich/` desplegada con `EXPORT=true EXPORT_BASE=/credits-rich NEXT_PUBLIC_STORE_KEY=credit-titles-store-rich`. Suite 207 verde, `tsc`/`lint` limpios.
 
+- 2026-07-03: ajustes de UI pedidos por el usuario (commit `9297e57`): (1) los 6 presets integrados del header pasan de botones sueltos (rompían el responsive) a un único dropdown "Presets" que integra también la sección "Mis presets" y "Guardar actual…"; (2) cabecera del inspector con toggle Item/Global (`ToggleGroup`) siempre visible — "Item" deshabilitado sin selección, Reset como botón de icono solo en vista global. Redesplegado en `/credits-rich/` y verificado en navegador por el usuario ("está perfecto").
+
 ## TODO
 
 ### Texto rico (2026-07-03)
