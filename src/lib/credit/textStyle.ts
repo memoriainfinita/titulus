@@ -3,7 +3,6 @@
 // Mirrors the resolve* pattern in separators.ts.
 
 import { CreditItem, CreditConfig } from "./types"
-import { getFontSize } from "./store"
 
 export interface ResolvedTextStyle {
   fontFamily: string
@@ -17,12 +16,10 @@ export interface ResolvedTextStyle {
 }
 
 export function resolveTextStyle(item: CreditItem, config: CreditConfig): ResolvedTextStyle {
-  const fontFamily = item.fontFamily?.trim() ? item.fontFamily.trim() : config.fontFamily
-  const color = item.color?.trim() ? item.color.trim() : config.textColor
-  const fontSize =
-    typeof item.fontSize === "number" && item.fontSize > 0
-      ? item.fontSize
-      : getFontSize(item.type, config)
+  // Font, size and color come from config only: per-run overrides live in `rich`.
+  const fontFamily = config.fontFamily
+  const color = config.textColor
+  const fontSize = config.fontSize
   const letterSpacing =
     typeof item.letterSpacing === "number" ? item.letterSpacing : config.letterSpacing
   const lineHeight =

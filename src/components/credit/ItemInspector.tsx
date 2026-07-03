@@ -2,13 +2,11 @@
 
 import * as React from "react"
 import {
-  Bold,
-  Italic,
   AlignLeft,
   AlignCenter,
   AlignRight,
 } from "lucide-react"
-import { useCreditStore, getFontSize } from "@/lib/credit/store"
+import { useCreditStore } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType } from "@/lib/credit/types"
 import { resolveAnimationType, resolveStaggerLines } from "@/lib/credit/appearing"
@@ -17,7 +15,6 @@ import { RichTextEditor } from "./RichTextEditor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -316,10 +313,8 @@ function ShadowOverrides({
 }
 
 export function ItemInspector({ item }: { item: CreditItem }) {
-  const { updateItem, config, fonts } = useCreditStore()
+  const { updateItem, config } = useCreditStore()
 
-  const toggleBold = () => updateItem(item.id, { bold: !item.bold })
-  const toggleItalic = () => updateItem(item.id, { italic: !item.italic })
   const toggleUppercase = () => updateItem(item.id, { uppercase: !item.uppercase })
   const setAlign = (align: Alignment) =>
     updateItem(item.id, { align: item.align === align ? undefined : align })
@@ -515,47 +510,15 @@ export function ItemInspector({ item }: { item: CreditItem }) {
     )
   }
 
-  // Text items: title / subtitle / name / role / description
+  // Text item: rich editor plus layout/effect overrides
   return (
     <div className="space-y-2">
-      {item.type === "text" ? (
-        <RichTextEditor
-          itemId={item.id}
-          rich={item.rich ?? plainToRich(item.text)}
-          onChange={(rich) => updateItem(item.id, { rich })}
-        />
-      ) : item.type === "title" || item.type === "subtitle" ? (
-        <Input
-          value={item.text}
-          onChange={(e) => updateItem(item.id, { text: e.target.value })}
-          placeholder="Escribe el texto..."
-        />
-      ) : (
-        <Textarea
-          value={item.text}
-          onChange={(e) => updateItem(item.id, { text: e.target.value })}
-          placeholder="Escribe el texto..."
-          rows={2}
-          className="resize-none text-sm"
-        />
-      )}
+      <RichTextEditor
+        itemId={item.id}
+        rich={item.rich ?? plainToRich(item.text)}
+        onChange={(rich) => updateItem(item.id, { rich })}
+      />
       <div className="flex items-center gap-1">
-        <Button
-          size="sm"
-          variant={item.bold ? "secondary" : "ghost"}
-          className="h-7 w-7 p-0"
-          onClick={toggleBold}
-        >
-          <Bold className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          size="sm"
-          variant={item.italic ? "secondary" : "ghost"}
-          className="h-7 w-7 p-0"
-          onClick={toggleItalic}
-        >
-          <Italic className="h-3.5 w-3.5" />
-        </Button>
         <Button
           size="sm"
           variant={item.uppercase ? "secondary" : "ghost"}
@@ -636,66 +599,6 @@ export function ItemInspector({ item }: { item: CreditItem }) {
       <div className="border-t pt-2 space-y-2">
         <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Estilo de texto</div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Tamaño</span>
-          <Input
-            type="number" min={1} step={1}
-            value={item.fontSize ?? ""}
-            placeholder={String(getFontSize(item.type, config))}
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw === "") { updateItem(item.id, { fontSize: undefined }); return }
-              const n = Number(raw); if (Number.isNaN(n)) return
-              updateItem(item.id, { fontSize: Math.max(1, n) })
-            }}
-            className="h-7 w-24 text-sm"
-          />
-          <span className="text-[10px] text-muted-foreground">vacío = global</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Color</span>
-          <div className="relative w-7 h-7 rounded-md border overflow-hidden shrink-0">
-            <input
-              type="color"
-              value={item.color?.trim() ? item.color : config.textColor}
-              onChange={(e) => updateItem(item.id, { color: e.target.value })}
-              className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
-            />
-            <div className="w-full h-full" style={{ backgroundColor: item.color?.trim() ? item.color : config.textColor }} />
-          </div>
-          <Input
-            value={item.color ?? ""}
-            placeholder="global"
-            onChange={(e) => {
-              const raw = e.target.value
-              updateItem(item.id, { color: raw === "" ? undefined : raw })
-            }}
-            className="h-7 flex-1 font-mono text-xs"
-          />
-          {item.color != null && (
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]"
-              onClick={() => updateItem(item.id, { color: undefined })}>
-              global
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Fuente</span>
-          <Select
-            value={item.fontFamily ?? "__global"}
-            onValueChange={(v) =>
-              updateItem(item.id, { fontFamily: v === "__global" ? undefined : v })
-            }
-          >
-            <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__global">(global)</SelectItem>
-              {fonts.map((f) => (
-                <SelectItem key={f.id} value={f.family}>{f.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Interletra</span>
           <Input
             type="number" step={0.5}
@@ -724,22 +627,6 @@ export function ItemInspector({ item }: { item: CreditItem }) {
             }}
             className="h-7 w-24 text-sm"
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">Peso</span>
-          <Input
-            type="number" min={100} max={900} step={100}
-            value={item.fontWeight ?? ""}
-            placeholder="global"
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw === "") { updateItem(item.id, { fontWeight: undefined }); return }
-              const n = Number(raw); if (Number.isNaN(n)) return
-              updateItem(item.id, { fontWeight: Math.max(1, n) })
-            }}
-            className="h-7 w-24 text-sm"
-          />
-          <span className="text-[10px] text-muted-foreground">vacío = global</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground whitespace-nowrap w-16">No envolver</span>

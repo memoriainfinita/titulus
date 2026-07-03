@@ -8,11 +8,6 @@ import {
   ChevronUp,
   ChevronDown,
   GripVertical,
-  Heading1,
-  Heading2,
-  User,
-  Briefcase,
-  Text,
   Space,
   Minus,
   Image as ImageIcon,
@@ -50,27 +45,12 @@ import { cn } from "@/lib/utils"
 
 const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: string }>> = {
   text: TypeIcon,
-  title: Heading1,
-  subtitle: Heading2,
-  name: User,
-  role: Briefcase,
-  description: Text,
   spacer: Space,
   divider: Minus,
   image: ImageIcon,
 }
 
-const ADD_MENU_TYPES: CreditItemType[] = [
-  "text",
-  "title",
-  "subtitle",
-  "name",
-  "role",
-  "description",
-  "spacer",
-  "divider",
-  "image",
-]
+const ADD_MENU_TYPES: CreditItemType[] = ["text", "spacer", "divider", "image"]
 
 function ItemRow({ item, index, isSelected, onSelect }: {
   item: CreditItem
@@ -128,8 +108,6 @@ function ItemRow({ item, index, isSelected, onSelect }: {
             <span className="text-xs font-medium text-muted-foreground">
               {CREDIT_TYPE_LABELS[item.type]}
             </span>
-            {item.bold && <Badge variant="secondary" className="text-[10px] py-0 px-1">B</Badge>}
-            {item.italic && <Badge variant="secondary" className="text-[10px] py-0 px-1">I</Badge>}
             {item.uppercase && <Badge variant="secondary" className="text-[10px] py-0 px-1">AA</Badge>}
             {item.align && <Badge variant="secondary" className="text-[10px] py-0 px-1">{item.align}</Badge>}
             {config.mode === "appearing" && item.pauseOverride != null && (

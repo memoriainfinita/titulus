@@ -7,7 +7,7 @@ function cfg(patch: Partial<CreditConfig> = {}): CreditConfig {
 }
 
 function item(patch: Partial<CreditItem> = {}): CreditItem {
-  return { id: "x", type: "name", text: "x", ...patch }
+  return { id: "x", type: "text", text: "x", ...patch }
 }
 
 describe("resolveTextShadow", () => {

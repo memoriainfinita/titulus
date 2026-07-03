@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { CreditItem, CreditConfig } from "@/lib/credit/types"
-import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
+import { resolveAlignment } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
 import { resolveTextShadow } from "@/lib/credit/text-shadow"
@@ -37,7 +37,7 @@ interface ScrollCreditsProps {
 function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperties {
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
-  const fontWeight = resolveFontWeight(item, config)
+  const fontWeight = config.fontWeight
 
   const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
@@ -53,7 +53,6 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
     textShadow: shadow,
     filter: blur > 0 ? `blur(${blur}px)` : undefined,
     textTransform: item.uppercase ? "uppercase" : undefined,
-    fontStyle: item.italic ? "italic" : undefined,
     padding: `0 ${config.paddingX}px`,
     width: "100%",
     maxWidth: ts.maxWidth,
@@ -122,7 +121,7 @@ const CreditLine = React.forwardRef<HTMLDivElement, { item: CreditItem; config: 
       </div>
     )
   }
-  const fontWeight = resolveFontWeight(item, config)
+  const fontWeight = config.fontWeight
   return (
     <div
       ref={ref}

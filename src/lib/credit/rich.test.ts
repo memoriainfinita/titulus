@@ -63,8 +63,8 @@ describe("isValidRich", () => {
 
 describe("fontInUseByItems", () => {
   const items: CreditItem[] = [
-    { id: "a", type: "name", text: "x", rich: [[{ text: "x", style: { fontFamily: "'Lobster', display" } }]] },
-    { id: "b", type: "name", text: "y" },
+    { id: "a", type: "text", text: "x", rich: [[{ text: "x", style: { fontFamily: "'Lobster', display" } }]] },
+    { id: "b", type: "text", text: "y" },
   ]
 
   it("finds a family used by any run", () => {

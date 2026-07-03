@@ -1,15 +1,6 @@
 // Type definitions for the credit titles generator
 
-export type CreditItemType =
-  | "text"
-  | "title"
-  | "subtitle"
-  | "name"
-  | "role"
-  | "description"
-  | "spacer"
-  | "divider"
-  | "image"
+export type CreditItemType = "text" | "spacer" | "divider" | "image"
 
 export type Alignment = "left" | "center" | "right"
 
@@ -53,8 +44,6 @@ export interface CreditItem {
   // `text`; `text` is kept in sync (derived) for durations, list rows, typewriter length.
   rich?: Rich
   align?: Alignment // override global alignment
-  bold?: boolean
-  italic?: boolean
   uppercase?: boolean
   // Appearing mode only: overrides config.pauseDuration (hold time) for this item.
   // undefined = inherit the global pause. Negative values are ignored.
@@ -83,13 +72,10 @@ export interface CreditItem {
   dividerOpacity?: number // 0-1
   dividerStyle?: DividerStyle
   dividerColor?: string // vacío/undefined = hereda config.textColor
-  // Text overrides. undefined/vacío = hereda el global correspondiente.
-  fontSize?: number // px; <= 0 se ignora
-  color?: string // vacío = hereda config.textColor
-  fontFamily?: string // vacío = hereda config.fontFamily
+  // Text overrides. undefined = hereda el global correspondiente.
+  // (fuente, tamaño, negrita, cursiva y color viven en los runs de `rich`.)
   letterSpacing?: number // px; admite 0 y negativos
   lineHeight?: number // <= 0 se ignora
-  fontWeight?: number // 100-900; <= 0 se ignora. Tiene prioridad sobre `bold`.
   // Animation overrides (modo aparición). undefined = hereda el config.* correspondiente.
   animationType?: AnimationType
   animationDuration?: number // s; <= 0 se ignora
@@ -127,11 +113,7 @@ export interface CreditConfig {
   // Typography
   fontFamily: string
   fontWeight: number
-  fontSizeTitle: number
-  fontSizeSubtitle: number
-  fontSizeName: number
-  fontSizeRole: number
-  fontSizeDescription: number
+  fontSize: number // px, base size for runs without a fontSize override
   letterSpacing: number
   lineHeight: number
   // Colors
@@ -196,11 +178,7 @@ export const DEFAULT_CONFIG: CreditConfig = {
   mode: "scroll",
   fontFamily: "'Inter', sans-serif",
   fontWeight: 400,
-  fontSizeTitle: 72,
-  fontSizeSubtitle: 42,
-  fontSizeName: 36,
-  fontSizeRole: 24,
-  fontSizeDescription: 20,
+  fontSize: 36,
   letterSpacing: 0,
   lineHeight: 1.4,
   textColor: "#ffffff",
@@ -253,11 +231,6 @@ export const DEFAULT_CONFIG: CreditConfig = {
 
 export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
   text: "Texto",
-  title: "Título principal",
-  subtitle: "Subtítulo",
-  name: "Nombre",
-  role: "Rol / Cargo",
-  description: "Descripción",
   spacer: "Espacio",
   divider: "Separador",
   image: "Logo / Imagen",
@@ -265,11 +238,6 @@ export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
 
 export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
   text: "Type",
-  title: "Heading1",
-  subtitle: "Heading2",
-  name: "User",
-  role: "Briefcase",
-  description: "Text",
   spacer: "Space",
   divider: "Minus",
   image: "Image",
@@ -277,38 +245,20 @@ export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
 
 // Default sample credits so the app looks good on first load
 export const DEFAULT_ITEMS: CreditItem[] = [
-  { id: "demo-1", type: "title", text: "Mi Película Increíble" },
-  { id: "demo-2", type: "subtitle", text: "Una historia de aventuras" },
+  { id: "demo-1", type: "text", text: "Mi Película Increíble", rich: [[{ text: "Mi Película Increíble", style: { fontSize: 72, bold: true } }]] },
+  { id: "demo-2", type: "text", text: "Una historia de aventuras", rich: [[{ text: "Una historia de aventuras", style: { fontSize: 42, italic: true } }]] },
   { id: "demo-3", type: "spacer", text: "" },
-  { id: "demo-4", type: "name", text: "Juan Pérez" },
-  { id: "demo-5", type: "role", text: "Director" },
-  { id: "demo-6", type: "spacer", text: "" },
-  { id: "demo-7", type: "name", text: "María González" },
-  { id: "demo-8", type: "role", text: "Productora Ejecutiva" },
+  { id: "demo-4", type: "text", text: "Juan Pérez\nDirector", rich: [[{ text: "Juan Pérez" }], [{ text: "Director", style: { fontSize: 24, italic: true, color: "#c9c9c9" } }]] },
+  { id: "demo-5", type: "spacer", text: "" },
+  { id: "demo-6", type: "text", text: "María González\nProductora Ejecutiva", rich: [[{ text: "María González" }], [{ text: "Productora Ejecutiva", style: { fontSize: 24, italic: true, color: "#c9c9c9" } }]] },
+  { id: "demo-7", type: "spacer", text: "" },
+  { id: "demo-8", type: "divider", text: "" },
   { id: "demo-9", type: "spacer", text: "" },
-  { id: "demo-10", type: "title", text: "Reparto Principal" },
+  { id: "demo-10", type: "text", text: "Reparto", rich: [[{ text: "Reparto", style: { fontSize: 56, bold: true } }]] },
   { id: "demo-11", type: "spacer", text: "" },
-  { id: "demo-12", type: "name", text: "Carlos Ruiz" },
-  { id: "demo-13", type: "role", text: "como Alejandro" },
+  { id: "demo-12", type: "text", text: "Carlos Ruiz como Alejandro", rich: [[{ text: "Carlos Ruiz", style: { bold: true } }, { text: " como " }, { text: "Alejandro", style: { italic: true } }]] },
+  { id: "demo-13", type: "text", text: "Ana Torres como Isabella", rich: [[{ text: "Ana Torres", style: { bold: true } }, { text: " como " }, { text: "Isabella", style: { italic: true } }]] },
   { id: "demo-14", type: "spacer", text: "" },
-  { id: "demo-15", type: "name", text: "Ana Torres" },
-  { id: "demo-16", type: "role", text: "como Isabella" },
-  { id: "demo-17", type: "spacer", text: "" },
-  { id: "demo-18", type: "divider", text: "" },
-  { id: "demo-19", type: "spacer", text: "" },
-  { id: "demo-20", type: "title", text: "Equipo Técnico" },
-  { id: "demo-21", type: "spacer", text: "" },
-  { id: "demo-22", type: "name", text: "Pedro Martín" },
-  { id: "demo-23", type: "role", text: "Director de Fotografía" },
-  { id: "demo-24", type: "spacer", text: "" },
-  { id: "demo-25", type: "name", text: "Lucía Díaz" },
-  { id: "demo-26", type: "role", text: "Diseño de Producción" },
-  { id: "demo-27", type: "spacer", text: "" },
-  { id: "demo-28", type: "name", text: "Miguel Ángel Serrano" },
-  { id: "demo-29", type: "role", text: "Música Original" },
-  { id: "demo-30", type: "spacer", text: "" },
-  { id: "demo-31", type: "divider", text: "" },
-  { id: "demo-32", type: "spacer", text: "" },
-  { id: "demo-33", type: "title", text: "GRACIAS" },
-  { id: "demo-34", type: "description", text: "Por ver esta película" },
+  { id: "demo-15", type: "text", text: "GRACIAS", rich: [[{ text: "GRACIAS", style: { fontSize: 72, bold: true } }]] },
+  { id: "demo-16", type: "text", text: "Por ver esta película", rich: [[{ text: "Por ver esta película", style: { fontSize: 20 } }]] },
 ]

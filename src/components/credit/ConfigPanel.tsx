@@ -307,48 +307,12 @@ function GlobalConfig() {
               />
             </Field>
             <Separator />
-            <Field label="Tamaño: Título" hint={`${config.fontSizeTitle}px`}>
+            <Field label="Tamaño base" hint={`${config.fontSize}px`}>
               <Slider
-                value={[config.fontSizeTitle]}
-                onValueChange={(v) => updateConfig({ fontSizeTitle: v[0] })}
-                min={16}
+                value={[config.fontSize]}
+                onValueChange={(v) => updateConfig({ fontSize: v[0] })}
+                min={10}
                 max={200}
-                step={1}
-              />
-            </Field>
-            <Field label="Tamaño: Subtítulo" hint={`${config.fontSizeSubtitle}px`}>
-              <Slider
-                value={[config.fontSizeSubtitle]}
-                onValueChange={(v) => updateConfig({ fontSizeSubtitle: v[0] })}
-                min={12}
-                max={150}
-                step={1}
-              />
-            </Field>
-            <Field label="Tamaño: Nombre" hint={`${config.fontSizeName}px`}>
-              <Slider
-                value={[config.fontSizeName]}
-                onValueChange={(v) => updateConfig({ fontSizeName: v[0] })}
-                min={12}
-                max={150}
-                step={1}
-              />
-            </Field>
-            <Field label="Tamaño: Rol" hint={`${config.fontSizeRole}px`}>
-              <Slider
-                value={[config.fontSizeRole]}
-                onValueChange={(v) => updateConfig({ fontSizeRole: v[0] })}
-                min={10}
-                max={120}
-                step={1}
-              />
-            </Field>
-            <Field label="Tamaño: Descripción" hint={`${config.fontSizeDescription}px`}>
-              <Slider
-                value={[config.fontSizeDescription]}
-                onValueChange={(v) => updateConfig({ fontSizeDescription: v[0] })}
-                min={10}
-                max={120}
                 step={1}
               />
             </Field>
@@ -835,8 +799,7 @@ export function PresetBar() {
         fontFamily: "'Playfair Display', serif",
         textColor: "#f5e6c8",
         backgroundColor: "#000000",
-        fontSizeTitle: 80,
-        fontSizeSubtitle: 44,
+        fontSize: 80,
       },
     },
     {
@@ -849,7 +812,7 @@ export function PresetBar() {
         useGradient: true,
         gradientFrom: "#0a0a0a",
         gradientTo: "#1f1f1f",
-        fontSizeTitle: 64,
+        fontSize: 64,
         fontWeight: 300,
         letterSpacing: 2,
       },
@@ -864,7 +827,7 @@ export function PresetBar() {
         useTextShadow: true,
         textShadowColor: "#d4af37",
         textShadowBlur: 20,
-        fontSizeTitle: 88,
+        fontSize: 88,
         fontWeight: 700,
       },
     },
@@ -880,7 +843,7 @@ export function PresetBar() {
         textShadowBlur: 25,
         textShadowX: 0,
         textShadowY: 0,
-        fontSizeTitle: 96,
+        fontSize: 96,
         letterSpacing: 4,
       },
     },
@@ -893,7 +856,7 @@ export function PresetBar() {
         backgroundColor: "#1a1a1a",
         useGradient: false,
         useTextShadow: false,
-        fontSizeTitle: 56,
+        fontSize: 56,
         fontWeight: 500,
       },
     },
@@ -907,7 +870,7 @@ export function PresetBar() {
         useTextShadow: true,
         textShadowColor: "#000000",
         textShadowBlur: 15,
-        fontSizeTitle: 100,
+        fontSize: 100,
         fontWeight: 600,
       },
     },
