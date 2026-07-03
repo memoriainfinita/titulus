@@ -434,6 +434,14 @@ export function useVideoExport() {
 
         source.close()
 
+        // A cancel on the last frame must not fall through to finalize and
+        // report a completed export.
+        if (cancelRef.current) {
+          await output.cancel()
+          reportCancelled()
+          return null
+        }
+
         setProgress({
           phase: "finalizing",
           currentFrame: totalFrames,
@@ -538,10 +546,11 @@ git commit -m "feat: WebCodecs export engine via mediabunny, replacing FFmpeg-wa
 
 - [ ] **Step 1: Apply the edits**
 
-(a) Import `checkExportSupport`:
+(a) Imports — `checkExportSupport` and the shared `evenDimensions` helper (the dialog's local `evenDim` is deleted in (f); dialog preview, support check, and staging canvas must all use the SAME formula):
 
 ```typescript
 import { useVideoExport, checkExportSupport, ExportProgress } from "@/lib/credit/useVideoExport"
+import { evenDimensions } from "@/lib/credit/exportSettings"
 ```
 
 (b) Delete the `format` state (line 102). Replace every use of `format` with the literal: `fileName` becomes `` `${safeName}.mp4` ``, the picker type becomes `{ description: "Video MP4", accept: { "video/mp4": [".mp4"] } }`, `exportVideo` options get `format: "mp4"` (transitional field, removed in Task 5), and "Descargar de nuevo" uses `` `${safeName}.mp4` ``.
@@ -598,9 +607,7 @@ React.useEffect(() => {
 }, [progress.phase])
 
 const totalFrames = Math.max(1, Math.ceil(duration * fps))
-const evenDim = (n: number) => Math.round(n / 2) * 2
-const outWidth = evenDim(config.stageWidth * scale)
-const outHeight = evenDim(config.stageHeight * scale)
+const { width: outWidth, height: outHeight } = evenDimensions(config.stageWidth, config.stageHeight, scale)
 const SCALE_PRESETS = [1, 1.5, 2, 3]
 
 // Rendering is linear in frames (capture+encode interleaved), so a single
@@ -613,6 +620,15 @@ let etaSeconds: number | null = null
 if (progress.phase === "rendering" && progress.totalFrames > 0) {
   etaSeconds = estimateRemainingSeconds(phaseElapsedMs, progress.currentFrame / progress.totalFrames)
 }
+```
+
+(f-bis) The per-scale dimension preview in the "Resolución" radio group (line 367, `evenDim(config.stageWidth * s)×evenDim(config.stageHeight * s)`) also switches to the helper:
+
+```tsx
+{(() => {
+  const d = evenDimensions(config.stageWidth, config.stageHeight, s)
+  return `${d.width}×${d.height}`
+})()}
 ```
 
 (g) `PhaseIcon` — replace the spinner cases (lines 76-79) with:
@@ -685,7 +701,7 @@ Expected: both gone from `package.json`.
 - [ ] **Step 3: Sweep for leftovers**
 
 Run: `git grep -n -i "ffmpeg" -- src/`
-Expected: no hits. (Hits in `state.md`/`docs/` are history and fine.)
+Expected: NO imports, identifiers, or URLs. The only acceptable hits are the explanatory comments introduced by this plan ("the old ffmpeg scale filter", "an ffmpeg scale filter" in `exportSettings.ts`/`useVideoExport.ts`) — they describe the replaced pipeline and stay. Anything else is a leftover to remove.
 
 - [ ] **Step 4: Full verification**
 
