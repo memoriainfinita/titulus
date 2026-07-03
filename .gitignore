@@ -62,3 +62,5 @@ server.log
 /download/
 /db/*.db
 .zscripts/*.pid
+# local archived versions (animus: never delete, archive)
+/.backups/
