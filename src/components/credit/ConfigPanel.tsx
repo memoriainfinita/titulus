@@ -167,38 +167,52 @@ export function InspectorPanel() {
   const viewingItem = item && !showGlobal
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-3 border-b">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Settings2 className="h-4 w-4" />
-          {viewingItem ? CREDIT_TYPE_LABELS[item.type] : "Configuración"}
+      <div className="flex items-center justify-between gap-2 p-3 border-b">
+        <h3 className="font-semibold text-sm flex items-center gap-2 min-w-0">
+          <Settings2 className="h-4 w-4 shrink-0" />
+          <span className="truncate">
+            {viewingItem ? CREDIT_TYPE_LABELS[item.type] : "Configuración"}
+          </span>
         </h3>
-        {item ? (
-          <Button size="sm" variant="ghost" className="h-7 text-xs"
-            onClick={() => setShowGlobal((v) => !v)}>
-            {showGlobal ? "Ver item" : "Ver global"}
-          </Button>
-        ) : (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="h-7 text-xs">
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                Reset
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <ToggleGroup
+            type="single"
+            value={viewingItem ? "item" : "global"}
+            onValueChange={(v) => {
+              if (v === "global") setShowGlobal(true)
+              else if (v === "item" && item) setShowGlobal(false)
+            }}
+            className="border rounded-md"
+          >
+            <ToggleGroupItem value="item" disabled={!item} className="h-7 px-2 text-xs">
+              Item
+            </ToggleGroupItem>
+            <ToggleGroupItem value="global" className="h-7 px-2 text-xs">
+              Global
+            </ToggleGroupItem>
+          </ToggleGroup>
+          {!viewingItem && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Restablecer configuración">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Restablecer toda la configuración?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Todos los ajustes volverán a sus valores por defecto. Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => resetConfig()}>Restablecer</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       {viewingItem ? (
         <ScrollArea className="flex-1 min-h-0">
@@ -877,27 +891,25 @@ export function PresetBar() {
   ]
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {presets.map((p) => (
-        <Button
-          key={p.name}
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          onClick={() => updateConfig(p.patch)}
-        >
-          {p.name}
-        </Button>
-      ))}
-
+    <div className="flex items-center gap-1.5">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-            <Bookmark className="h-3.5 w-3.5" />
-            Mis presets
+            <Wand2 className="h-3.5 w-3.5" />
+            Presets
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          {presets.map((p) => (
+            <DropdownMenuItem key={p.name} onSelect={() => updateConfig(p.patch)}>
+              {p.name}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+            <Bookmark className="h-3 w-3" />
+            Mis presets
+          </div>
           {userPresets.length === 0 ? (
             <div className="px-2 py-1.5 text-xs text-muted-foreground">Sin presets guardados</div>
           ) : (
