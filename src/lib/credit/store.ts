@@ -187,19 +187,7 @@ export const useCreditStore = create<CreditState>()(
       _hasHydrated: false,
 
       addItem: (type, text, index) => {
-        const placeholder =
-          type === "title"
-            ? "Nuevo título"
-            : type === "subtitle"
-              ? "Nuevo subtítulo"
-              : type === "name"
-                ? "Nombre Apellido"
-                : type === "role"
-                  ? "Cargo"
-                  : type === "description"
-                    ? "Descripción del rol o detalle"
-                    : ""
-        const resolved = text ?? (type === "text" ? "Nuevo texto" : placeholder)
+        const resolved = text ?? (type === "text" ? "Nuevo texto" : "")
         const newItem: CreditItem =
           type === "text"
             ? { id: uuid(), type, text: resolved, rich: plainToRich(resolved) }
@@ -370,52 +358,9 @@ export const useCreditStore = create<CreditState>()(
   ),
 )
 
-// Helper to get font size for a given credit item type
-export function getFontSize(type: CreditItemType, config: CreditConfig): number {
-  switch (type) {
-    case "title":
-      return config.fontSizeTitle
-    case "subtitle":
-      return config.fontSizeSubtitle
-    case "name":
-      return config.fontSizeName
-    case "role":
-      return config.fontSizeRole
-    case "description":
-      return config.fontSizeDescription
-    default:
-      return config.fontSizeDescription
-  }
-}
-
-// Helper to get font weight for a given credit item type
-export function getFontWeight(type: CreditItemType, baseWeight: number): number {
-  switch (type) {
-    case "title":
-      return Math.min(900, baseWeight + 200)
-    case "subtitle":
-      return Math.min(900, baseWeight + 100)
-    case "name":
-      return Math.min(900, baseWeight + 100)
-    case "role":
-      return Math.max(100, baseWeight - 100)
-    case "description":
-      return baseWeight
-    default:
-      return baseWeight
-  }
-}
-
 // Resolve alignment for an item
 export function resolveAlignment(item: CreditItem, config: CreditConfig): Alignment {
   return item.align ?? config.alignment
-}
-
-// Resolve the numeric font weight for an item. An explicit per-item weight wins;
-// otherwise `bold` forces 700, falling back to the type-derived global weight.
-export function resolveFontWeight(item: CreditItem, config: CreditConfig): number {
-  if (typeof item.fontWeight === "number" && item.fontWeight > 0) return item.fontWeight
-  return item.bold ? 700 : getFontWeight(item.type, config.fontWeight)
 }
 
 // Merge a persisted (possibly older) config over the current defaults, so

@@ -6,7 +6,7 @@ function cfg(patch: Partial<CreditConfig> = {}): CreditConfig {
   return { ...DEFAULT_CONFIG, ...patch }
 }
 function item(patch: Partial<CreditItem> = {}): CreditItem {
-  return { id: "i", type: "name", text: "x", ...patch }
+  return { id: "i", type: "text", text: "x", ...patch }
 }
 
 describe("resolveTextBlur", () => {

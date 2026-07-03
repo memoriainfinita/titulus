@@ -20,7 +20,7 @@ function makeConfig(patch: Partial<CreditConfig> = {}): CreditConfig {
 }
 
 function makeItem(patch: Partial<CreditItem> = {}): CreditItem {
-  return { id: "x", type: "name", text: "Hola", ...patch }
+  return { id: "x", type: "text", text: "Hola", ...patch }
 }
 
 describe("getAppearItemDuration (non-typewriter)", () => {

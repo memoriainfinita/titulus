@@ -3,7 +3,7 @@
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreditItem, CreditConfig, AnimationType } from "@/lib/credit/types"
-import { resolveAlignment, resolveFontWeight } from "@/lib/credit/store"
+import { resolveAlignment } from "@/lib/credit/store"
 import { RichText, LineSpans } from "./RichText"
 import { sliceRuns, plainToRich } from "@/lib/credit/rich"
 import {
@@ -119,7 +119,7 @@ export function getVariants(
 function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }) {
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
-  const fontWeight = resolveFontWeight(item, config)
+  const fontWeight = config.fontWeight
   const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
   return (
@@ -135,7 +135,6 @@ function AppearItem({ item, config }: { item: CreditItem; config: CreditConfig }
         textShadow: shadow,
         filter: blur > 0 ? `blur(${blur}px)` : undefined,
         textTransform: item.uppercase ? "uppercase" : undefined,
-        fontStyle: item.italic ? "italic" : undefined,
         padding: `0 ${config.paddingX}px`,
         maxWidth: ts.maxWidth,
         whiteSpace: ts.whiteSpace,
@@ -197,7 +196,7 @@ function LinesItem({
 
   const align = resolveAlignment(item, config)
   const ts = resolveTextStyle(item, config)
-  const fontWeight = resolveFontWeight(item, config)
+  const fontWeight = config.fontWeight
   const shadow = resolveTextShadow(item, config)
   const blur = resolveTextBlur(item, config)
   const richLines = item.rich ?? plainToRich(item.text || " ")
@@ -214,7 +213,6 @@ function LinesItem({
         textShadow: shadow,
         filter: blur > 0 ? `blur(${blur}px)` : undefined,
         textTransform: item.uppercase ? "uppercase" : undefined,
-        fontStyle: item.italic ? "italic" : undefined,
         padding: `0 ${config.paddingX}px`,
         maxWidth: ts.maxWidth,
         whiteSpace: ts.whiteSpace,
@@ -290,13 +288,12 @@ function TypewriterItem({
       style={{
         fontFamily: ts.fontFamily,
         fontSize: `${ts.fontSize}px`,
-        fontWeight: resolveFontWeight(item, config),
+        fontWeight: config.fontWeight,
         color: ts.color,
         letterSpacing: `${ts.letterSpacing}px`,
         lineHeight: ts.lineHeight,
         textAlign: resolveAlignment(item, config),
         textTransform: item.uppercase ? "uppercase" : undefined,
-        fontStyle: item.italic ? "italic" : undefined,
         padding: `0 ${config.paddingX}px`,
         maxWidth: ts.maxWidth,
         whiteSpace: ts.whiteSpace,
@@ -305,7 +302,7 @@ function TypewriterItem({
         filter: resolveTextBlur(item, config) > 0 ? `blur(${resolveTextBlur(item, config)}px)` : undefined,
       }}
     >
-      <RichText rich={shownRich} baseWeight={resolveFontWeight(item, config)} />
+      <RichText rich={shownRich} baseWeight={config.fontWeight} />
       {live ? (
         <motion.span
           animate={{ opacity: [1, 0] }}
