@@ -162,6 +162,9 @@ Orden: hacer ESTO antes de publicar. Publicar en Pages tras el primer push.
 - [x] `next.config.ts`: quitados los parches z.ai `typescript.ignoreBuildErrors: true` y `output: "standalone"` (este último sobraba sin el deploy con bun). Resuelto 2026-06-23: `next build` ahora ejecuta el type-check (antes lo saltaba) y pasa limpio.
 - [x] Control del salto de línea / wrap del texto. Resuelto 2026-06-24: `config.noWrap` (global) + `item.noWrap` (override) → `whiteSpace: "pre"` y sin `wordBreak` (no envuelve automático, respeta saltos manuales); `config.textBoxWidth` + `item.textBoxWidth` (% del escenario) = max-width de la caja de texto, centrada, independiente de `paddingX`. Todo vía `resolveTextStyle` ampliado (`whiteSpace`/`wordBreak`/`maxWidth`), consumido en scroll, aparición y typewriter. UI global en Tipografía (`ConfigPanel`) y override por item en `CreditEditor`.
 
+### UX inspector (pedido 2026-07-04)
+- [ ] Ver la posibilidad de reorganizar las opciones del inspector (globales y por item): hay muchos campos y cuesta navegarlos, aunque están bien ordenados. Brainstorming antes de tocar nada.
+
 ### UX / atajos de teclado (pedido 2026-06-24)
 - [x] Tecla espacio = play/pause de la previsualización. Resuelto 2026-06-24: listener `keydown` global en `CreditPreview` que togglea `setPlaying` (y limpia el seek al reanudar); helper puro `keyboard.ts` (`isInteractiveTarget`, 5 tests) ignora el evento cuando el foco está en input/textarea/select/button/contenteditable/role=button.
 
