@@ -12,6 +12,7 @@ import {
   Minus,
   Image as ImageIcon,
   Type as TypeIcon,
+  Layers,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, DEFAULT_ITEMS } from "@/lib/credit/types"
@@ -48,9 +49,13 @@ const TYPE_ICONS: Record<CreditItemType, React.ComponentType<{ className?: strin
   spacer: Space,
   divider: Minus,
   image: ImageIcon,
+  overlay: Layers,
 }
 
-const ADD_MENU_TYPES: CreditItemType[] = ["text", "spacer", "divider", "image"]
+const ADD_MENU_TYPES: CreditItemType[] = ["text", "spacer", "divider", "image", "overlay"]
+
+// Types that don't take part in appearing mode.
+const SCROLL_ONLY_TYPES: CreditItemType[] = ["spacer", "divider", "overlay"]
 
 function ItemRow({ item, index, isSelected, onSelect }: {
   item: CreditItem
@@ -114,10 +119,10 @@ function ItemRow({ item, index, isSelected, onSelect }: {
               <Badge variant="secondary" className="text-[10px] py-0 px-1">{item.pauseOverride}s</Badge>
             )}
           </div>
-          {item.type === "spacer" || item.type === "divider" || item.type === "image" ? (
+          {item.type !== "text" ? (
             <p className={cn(
               "text-xs italic",
-              config.mode === "appearing" && (item.type === "spacer" || item.type === "divider")
+              config.mode === "appearing" && SCROLL_ONLY_TYPES.includes(item.type)
                 ? "text-muted-foreground/50"
                 : "text-muted-foreground",
             )}>
@@ -125,8 +130,10 @@ function ItemRow({ item, index, isSelected, onSelect }: {
                 ? "(espacio en blanco)"
                 : item.type === "divider"
                   ? "(línea separadora)"
-                  : item.imageSrc ? "(logo cargado)" : "(logo / imagen sin cargar)"}
-              {config.mode === "appearing" && (item.type === "spacer" || item.type === "divider") && " — no se aplica en aparición"}
+                  : item.type === "overlay"
+                    ? item.imageSrc ? "(imagen fija cargada)" : "(imagen fija sin cargar)"
+                    : item.imageSrc ? "(logo cargado)" : "(logo / imagen sin cargar)"}
+              {config.mode === "appearing" && SCROLL_ONLY_TYPES.includes(item.type) && " — no se aplica en aparición"}
             </p>
           ) : (
             <p className="text-sm truncate">{item.text || <span className="text-muted-foreground italic">(vacío)</span>}</p>

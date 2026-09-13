@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { CreditItem, CreditConfig } from "@/lib/credit/types"
+import { CreditItem, CreditConfig, OverlayLayer } from "@/lib/credit/types"
+import { cn } from "@/lib/utils"
 import { resolveAlignment } from "@/lib/credit/store"
 import { getScrollDurationSec, getScrollTranslateY, stepScrollProgress } from "@/lib/credit/scroll"
 import { resolveSpacerHeight, resolveDivider } from "@/lib/credit/separators"
@@ -11,6 +12,7 @@ import { resolveTextStyle } from "@/lib/credit/textStyle"
 import { resolveImageWidth } from "@/lib/credit/image"
 import { resolveSafeInset } from "@/lib/credit/safeMargins"
 import { resolveBackgroundStyle } from "@/lib/credit/background"
+import { resolveOverlay, overlayStartSec, overlayOpacityAt } from "@/lib/credit/overlay"
 import { RichText } from "./RichText"
 
 interface ScrollCreditsProps {
@@ -70,6 +72,10 @@ const CreditLine = React.forwardRef<HTMLDivElement, { item: CreditItem; config: 
   function CreditLine({ item, config }, ref) {
   if (item.type === "spacer") {
     return <div ref={ref} style={{ height: `${resolveSpacerHeight(item, config)}px` }} aria-hidden />
+  }
+  if (item.type === "overlay") {
+    // Zero-height marker: only its position in the flow matters (see OverlayLayer).
+    return <div ref={ref} style={{ height: 0 }} aria-hidden />
   }
   if (item.type === "image") {
     if (!item.imageSrc) return <div ref={ref} aria-hidden />
@@ -157,6 +163,7 @@ export function ScrollCredits({
   const [contentHeight, setContentHeight] = React.useState(0)
   const [containerHeight, setContainerHeight] = React.useState(0)
   const [internalProgress, setInternalProgress] = React.useState(0)
+  const [markerTops, setMarkerTops] = React.useState<Record<string, number>>({})
 
   // Use manual progress if provided, otherwise use internal
   const progress = manualProgress !== null ? manualProgress : internalProgress
@@ -170,15 +177,22 @@ export function ScrollCredits({
         const cont = containerRef.current.clientHeight
         setContentHeight(ch)
         setContainerHeight(cont)
+        const tops: Record<string, number> = {}
+        for (const it of items) {
+          if (it.type === "overlay") tops[it.id] = itemEls.current.get(it.id)?.offsetTop ?? 0
+        }
+        setMarkerTops((prev) => (JSON.stringify(prev) === JSON.stringify(tops) ? prev : tops))
         if (onLayoutChange) {
           // Only items with a real box: excludes the src-less image (height 0),
           // which could otherwise be flagged "active" for an instant in the gap.
+          // Overlay markers are kept on purpose: their row lights up when they trigger.
           const offsets = items
             .map((it) => {
               const el = itemEls.current.get(it.id)
-              return { id: it.id, top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
+              return { id: it.id, type: it.type, top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
             })
-            .filter((o) => o.height > 0)
+            .filter((o) => o.height > 0 || o.type === "overlay")
+            .map(({ id, top, height }) => ({ id, top, height }))
           onLayoutChange({ offsets, contentHeight: ch, containerHeight: cont })
         }
       }
@@ -279,12 +293,44 @@ export function ScrollCredits({
   // Background style
   const backgroundStyle = resolveBackgroundStyle(config)
 
+  // Overlay images. Paint order: background > back overlays > credits >
+  // vignette (z-10) > front overlays (z-20).
+  const scrollSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
+  const renderOverlays = (layer: OverlayLayer) =>
+    items.map((item) => {
+      if (item.type !== "overlay" || !item.imageSrc || !(item.id in markerTops)) return null
+      const o = resolveOverlay(item)
+      if (o.layer !== layer) return null
+      const start = overlayStartSec(markerTops[item.id], contentHeight, containerHeight, config.scrollDirection, scrollSec)
+      const opacity = overlayOpacityAt(progress * scrollSec, start, o.duration, o.fade)
+      // Not rendered while hidden: keeps invisible images out of each export frame.
+      if (opacity <= 0) return null
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={item.id}
+          src={item.imageSrc}
+          alt=""
+          className={cn("absolute pointer-events-none", layer === "front" && "z-20")}
+          style={{
+            left: `${o.x}%`,
+            top: `${o.y}%`,
+            width: `${resolveImageWidth(item, config)}%`,
+            height: "auto",
+            transform: "translate(-50%, -50%)",
+            opacity,
+          }}
+        />
+      )
+    })
+
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden"
       style={backgroundStyle}
     >
+      {renderOverlays("back")}
       {config.vignetteEnabled && (
         <>
           {/* Top fade */}
@@ -331,6 +377,7 @@ export function ScrollCredits({
           />
         ))}
       </div>
+      {renderOverlays("front")}
     </div>
   )
 }
