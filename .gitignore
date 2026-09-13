@@ -1,66 +1,27 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
 
 # next.js
 /.next/
 /out/
 
-# portable build artifacts (build-portable.ps1)
-/credits-portable/
-/credits-portable.zip
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
+# testing
+/coverage
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
-.claude
-.z-ai-config
+
+# env files
+.env*
+
+# logs
 *.log
-dev.log
-dev.out.log
-test
-prompt
 
-server.log
-# Skills directory
-/skills/
+# local tooling
+.claude
+.DS_Store
 
-# z.ai dev artifacts (screenshots, example exports, local db, pid)
-/scripts/
-/download/
-/db/*.db
-.zscripts/*.pid
-# local archived versions (animus: never delete, archive)
+# local archived versions (never delete, archive)
+/.archive/
 /.backups/
