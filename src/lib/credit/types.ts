@@ -1,10 +1,12 @@
 // Type definitions for the credit titles generator
 
-export type CreditItemType = "text" | "spacer" | "divider" | "image"
+export type CreditItemType = "text" | "spacer" | "divider" | "image" | "overlay"
 
 export type Alignment = "left" | "center" | "right"
 
 export type BackgroundImageFit = "cover" | "contain"
+
+export type OverlayLayer = "front" | "back"
 
 export type CreditMode = "scroll" | "appearing"
 
@@ -88,6 +90,13 @@ export interface CreditItem {
   // Image (logo) item.
   imageSrc?: string // data URL
   imageWidth?: number // % del ancho del escenario; undefined = hereda config.imageWidth
+  // Overlay item (scroll mode): fixed image shown when its list position reaches
+  // the stage center. Reuses imageSrc/imageWidth. undefined = OVERLAY_DEFAULTS.
+  overlayX?: number // % del ancho del escenario, centro de la imagen
+  overlayY?: number // % del alto del escenario, centro de la imagen
+  overlayDuration?: number // s visible, fundidos incluidos; <= 0 se ignora
+  overlayFade?: number // s de fundido de entrada y de salida; < 0 se ignora
+  overlayLayer?: OverlayLayer // front = sobre texto y viñeta; back = bajo el texto, sobre el fondo
   // Wrap overrides. undefined = hereda el global correspondiente.
   noWrap?: boolean
   textBoxWidth?: number // % del ancho del escenario; <= 0 se ignora
@@ -242,6 +251,7 @@ export const CREDIT_TYPE_LABELS: Record<CreditItemType, string> = {
   spacer: "Espacio",
   divider: "Separador",
   image: "Logo / Imagen",
+  overlay: "Imagen fija",
 }
 
 export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
@@ -249,6 +259,7 @@ export const CREDIT_TYPE_ICONS: Record<CreditItemType, string> = {
   spacer: "Space",
   divider: "Minus",
   image: "Image",
+  overlay: "Layers",
 }
 
 // Default sample credits so the app looks good on first load

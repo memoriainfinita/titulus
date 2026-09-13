@@ -45,7 +45,8 @@ import { ScrollCredits } from "./ScrollCredits"
 import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
 import { TimelineBar } from "./TimelineBar"
 import { getAppearItemDuration } from "@/lib/credit/appearing"
-import { scrollProgressForItem, activeItemIndexAtProgress } from "@/lib/credit/scroll"
+import { scrollProgressForItem, activeItemIndexAtProgress, getScrollDurationSec } from "@/lib/credit/scroll"
+import { resolveOverlay } from "@/lib/credit/overlay"
 import { itemProgressBounds } from "@/lib/credit/timeline"
 import { isInteractiveTarget } from "@/lib/credit/keyboard"
 import { ExportDialog } from "./ExportDialog"
@@ -130,10 +131,16 @@ export function CreditPreview() {
     if (!layout) return
     const off = layout.offsets.find((o) => o.id === seekTarget.id)
     if (!off) return
-    const p = scrollProgressForItem(
+    let p = scrollProgressForItem(
       off.top, off.height, layout.contentHeight, layout.containerHeight,
       config.scrollDirection, 0.5,
     )
+    // Overlays trigger at that point at opacity 0: land once the fade-in is done.
+    const target = items.find((i) => i.id === seekTarget.id)
+    const scrollSec = getScrollDurationSec(layout.contentHeight, layout.containerHeight, config.scrollSpeed)
+    if (target?.type === "overlay" && scrollSec > 0) {
+      p = Math.min(1, p + resolveOverlay(target).fade / scrollSec)
+    }
     setPlaying(false)
     setManualSeek(p)
   }, [seekTarget]) // eslint-disable-line react-hooks/exhaustive-deps

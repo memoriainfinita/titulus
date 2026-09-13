@@ -44,7 +44,7 @@ interface AppearingCreditsProps {
 
 // Filter out spacer and divider items — they don't appear in this mode
 export function getVisibleItems(items: CreditItem[]): CreditItem[] {
-  return items.filter((i) => i.type !== "spacer" && i.type !== "divider")
+  return items.filter((i) => i.type !== "spacer" && i.type !== "divider" && i.type !== "overlay")
 }
 
 // Get animation variants for the chosen type

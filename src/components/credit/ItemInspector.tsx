@@ -8,12 +8,14 @@ import {
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
 import { resolveDivider } from "@/lib/credit/separators"
-import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType } from "@/lib/credit/types"
+import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType, OverlayLayer } from "@/lib/credit/types"
 import { resolveAnimationType, resolveStaggerLines } from "@/lib/credit/appearing"
 import { plainToRich } from "@/lib/credit/rich"
+import { resolveOverlay, OVERLAY_DEFAULTS } from "@/lib/credit/overlay"
 import { RichTextEditor } from "./RichTextEditor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,
@@ -506,6 +508,105 @@ export function ItemInspector({ item }: { item: CreditItem }) {
         {config.mode === "appearing" && (
           <AnimationOverrides item={item} config={config} updateItem={updateItem} />
         )}
+      </div>
+    )
+  }
+
+  if (item.type === "overlay") {
+    const o = resolveOverlay(item)
+    const numField = (key: "imageWidth" | "overlayDuration" | "overlayFade", min: number, max?: number) =>
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value
+        if (raw === "") { updateItem(item.id, { [key]: undefined }); return }
+        const n = Number(raw); if (Number.isNaN(n)) return
+        updateItem(item.id, { [key]: Math.max(min, max === undefined ? n : Math.min(max, n)) })
+      }
+    return (
+      <div className="space-y-3">
+        {item.imageSrc && (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.imageSrc} alt="" className="h-12 w-auto max-w-[120px] rounded border object-contain bg-muted" />
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-destructive"
+              onClick={() => updateItem(item.id, { imageSrc: undefined })}>
+              Quitar
+            </Button>
+          </div>
+        )}
+        <div>
+          <input
+            type="file"
+            accept="image/*"
+            id={`overlay-file-${item.id}`}
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const reader = new FileReader()
+              reader.onload = () => updateItem(item.id, { imageSrc: String(reader.result) })
+              reader.readAsDataURL(file)
+              e.target.value = ""
+            }}
+          />
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+            <label htmlFor={`overlay-file-${item.id}`} className="cursor-pointer">
+              {item.imageSrc ? "Cambiar imagen" : "Subir imagen"}
+            </label>
+          </Button>
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Posición horizontal</span>
+            <span className="text-[10px] text-muted-foreground">{Math.round(o.x)}%</span>
+          </div>
+          <Slider value={[o.x]} min={0} max={100} step={1}
+            onValueChange={(v) => updateItem(item.id, { overlayX: v[0] })} />
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Posición vertical</span>
+            <span className="text-[10px] text-muted-foreground">{Math.round(o.y)}%</span>
+          </div>
+          <Slider value={[o.y]} min={0} max={100} step={1}
+            onValueChange={(v) => updateItem(item.id, { overlayY: v[0] })} />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <label className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Ancho %</span>
+            <Input type="number" min={0} max={100} step={1}
+              value={item.imageWidth ?? ""} placeholder={String(config.imageWidth)}
+              onChange={numField("imageWidth", 0, 100)} className="h-7 text-sm" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Duración (s)</span>
+            <Input type="number" min={0.1} step={0.5}
+              value={item.overlayDuration ?? ""} placeholder={String(OVERLAY_DEFAULTS.duration)}
+              onChange={numField("overlayDuration", 0.1)} className="h-7 text-sm" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Fundido (s)</span>
+            <Input type="number" min={0} step={0.1}
+              value={item.overlayFade ?? ""} placeholder={String(OVERLAY_DEFAULTS.fade)}
+              onChange={numField("overlayFade", 0)} className="h-7 text-sm" />
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">Capa</span>
+          <Select
+            value={o.layer}
+            onValueChange={(v) => updateItem(item.id, { overlayLayer: v as OverlayLayer })}
+          >
+            <SelectTrigger className="h-7 text-sm flex-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="front">Delante de los créditos</SelectItem>
+              <SelectItem value="back">Detrás de los créditos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Aparece cuando su posición en la lista llega al centro de la pantalla.
+          {config.mode === "appearing" && " No se aplica en aparición."}
+        </p>
       </div>
     )
   }
