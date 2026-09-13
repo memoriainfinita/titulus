@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Credit Titles Studio - Generador de Títulos de Crédito",
+  title: "TITULUS - Generador de títulos de crédito",
   description: "Crea títulos de crédito estilo cine con scroll o aparición. Configura fuentes, velocidad, tamaños, colores y animaciones.",
   keywords: ["créditos", "títulos", "película", "cine", "scroll", "animación", "fuentes"],
-  authors: [{ name: "Credit Titles Studio" }],
+  authors: [{ name: "mykl" }],
 };
 
 export default function RootLayout({
