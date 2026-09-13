@@ -16,11 +16,12 @@ Generador de títulos de crédito para vídeo. Se edita en vivo con vista previa
 - Línea de tiempo con scrub, salto por item y resalte del item activo en la lista.
 - Presets integrados y presets propios (guardados en el navegador).
 - Proyecto exportable e importable como JSON.
+- Dos motores de exportación: Rápido (WebCodecs, codificación H.264 por hardware, solo MP4) y Compatible (FFmpeg-wasm, MP4 o WebM). El diálogo comprueba si el navegador soporta el Rápido y, si no, usa el Compatible.
 - Exportación a MP4 o WebM con resolución por multiplicador (x1 a x3), fps a elegir, cronómetro y ETA, y destino de guardado a elegir (File System Access API en Chrome/Edge; descarga automática en el resto).
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Zustand · TipTap · framer-motion · FFmpeg-wasm + html-to-image · Vitest.
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Zustand · TipTap · framer-motion · html-to-image · Mediabunny (WebCodecs) · FFmpeg-wasm · Vitest.
 
 ## Arranque
 
@@ -49,10 +50,10 @@ Los builds nativos (sharp, etc.) se autorizan en `pnpm-workspace.yaml` (`allowBu
 
 - `src/app/page.tsx`: layout de tres paneles, lista de items (izquierda), preview (centro) e inspector (derecha).
 - `src/components/credit/`: lista, preview, inspector, gestor de fuentes, diálogo de exportación, escenas de scroll y aparición, editor de texto rico.
-- `src/lib/credit/`: tipos, store (Zustand, persistido en localStorage), módulos puros de lógica (geometría de scroll, duraciones, resolvers de estilo, texto rico) y motor de exportación (`useVideoExport.ts`).
+- `src/lib/credit/`: tipos, store (Zustand, persistido en localStorage), módulos puros de lógica (geometría de scroll, duraciones, resolvers de estilo, texto rico) y motores de exportación (`useVideoExport.ts` elige entre `webcodecsExport.ts` y la ruta FFmpeg).
 - `src/components/ui/`: componentes de shadcn/ui.
 - `docs/superpowers/`: specs y planes de las features implementadas.
 
 ## Conexiones externas
 
-La app no envía datos del usuario a ningún sitio. Contacta con terceros solo para descargar recursos: `unpkg.com` (core de FFmpeg-wasm, al exportar) y `fonts.googleapis.com` / `fonts.gstatic.com` (Google Fonts, si se usan).
+La app no envía datos del usuario a ningún sitio. Contacta con terceros solo para descargar recursos: `unpkg.com` (core de FFmpeg-wasm, solo al exportar con el motor Compatible) y `fonts.googleapis.com` / `fonts.gstatic.com` (Google Fonts, si se usan).
