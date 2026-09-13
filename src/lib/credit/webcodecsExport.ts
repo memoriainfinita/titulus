@@ -29,7 +29,12 @@ export interface WebCodecsExportParams {
 export async function canExportWithWebCodecs(width: number, height: number, quality: ExportQuality): Promise<boolean> {
   if (typeof VideoEncoder === "undefined") return false
   try {
-    return await canEncodeVideo("avc", { width, height, quality: new Quality(WEBCODECS_QUALITY[quality]) })
+    // No hardwareAcceleration here: any avc encoder (hardware or software) is enough.
+    return await canEncodeVideo("avc", {
+      width: evenDimension(width),
+      height: evenDimension(height),
+      quality: new Quality(WEBCODECS_QUALITY[quality]),
+    })
   } catch {
     return false
   }
@@ -49,14 +54,26 @@ export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blo
   const ctx = staging.getContext("2d")
   if (!ctx) throw new Error("No se pudo crear el canvas de exportación")
 
+  const quality = new Quality(WEBCODECS_QUALITY[p.quality])
+  // Machines without a hardware H.264 encoder reject "prefer-hardware" even
+  // though plain avc is supported (software encoder): fall back to no preference.
+  const hardwareAcceleration = (await canEncodeVideo("avc", {
+    width: outWidth,
+    height: outHeight,
+    quality,
+    hardwareAcceleration: "prefer-hardware",
+  }).catch(() => false))
+    ? "prefer-hardware"
+    : "no-preference"
+
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: "in-memory" }),
     target: new BufferTarget(),
   })
   const source = new CanvasSource(staging, {
     codec: "avc",
-    quality: new Quality(WEBCODECS_QUALITY[p.quality]),
-    hardwareAcceleration: "prefer-hardware",
+    quality,
+    hardwareAcceleration,
   })
   output.addVideoTrack(source, { frameRate: p.fps })
 
