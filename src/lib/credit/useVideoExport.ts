@@ -5,8 +5,12 @@ import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { toBlobURL } from "@ffmpeg/util"
 import { toPng } from "html-to-image"
 import { CreditConfig, CreditItem, CreditMode } from "@/lib/credit/types"
+import { buildEmbeddedFontsCSS } from "@/lib/credit/fontEmbed"
+import { exportWithWebCodecs } from "@/lib/credit/webcodecsExport"
 
 export interface ExportOptions {
+  // "webcodecs": toCanvas + hardware H.264 (MP4 only). "ffmpeg": PNG frames + FFmpeg-wasm.
+  engine: "webcodecs" | "ffmpeg"
   fps: number
   width: number
   height: number
@@ -20,7 +24,7 @@ export interface ExportOptions {
 }
 
 export interface ExportProgress {
-  phase: "idle" | "loading-ffmpeg" | "capturing" | "encoding" | "finalizing" | "done" | "error"
+  phase: "idle" | "loading-ffmpeg" | "capturing" | "encoding" | "rendering" | "finalizing" | "done" | "error"
   currentFrame: number
   totalFrames: number
   message: string
@@ -35,61 +39,6 @@ const QUALITY_PRESETS: Record<ExportOptions["quality"], { crf: string; preset: s
   fast: { crf: "28", preset: "ultrafast" },
   balanced: { crf: "23", preset: "veryfast" },
   high: { crf: "18", preset: "medium" },
-}
-
-// Pre-fetch and embed Google Fonts as data URLs so they work in the captured image
-// without CORS issues. Returns a CSS string with @font-face rules ready to embed.
-async function buildEmbeddedFontsCSS(): Promise<string> {
-  try {
-    // Find all Google Fonts <link> tags in the document
-    const fontLinks = Array.from(
-      document.querySelectorAll('link[rel="stylesheet"][href*="fonts.googleapis.com"]'),
-    ) as HTMLLinkElement[]
-
-    if (fontLinks.length === 0) return ""
-
-    let css = ""
-    for (const link of fontLinks) {
-      try {
-        const response = await fetch(link.href)
-        const text = await response.text()
-        // The CSS contains @font-face rules with relative URL references to fonts.gstatic.com
-        // We need to download each .woff2 file and convert to data URL
-        const fontUrlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g
-        let match
-        let processedCss = text
-        const replacements: Array<{ url: string; dataUrl: string }> = []
-
-        while ((match = fontUrlRegex.exec(text)) !== null) {
-          const fontUrl = match[1]
-          try {
-            const fontResp = await fetch(fontUrl)
-            const fontBlob = await fontResp.blob()
-            const reader = new FileReader()
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string)
-              reader.onerror = reject
-              reader.readAsDataURL(fontBlob)
-            })
-            replacements.push({ url: fontUrl, dataUrl })
-          } catch {
-            // Skip this font, will fall back
-          }
-        }
-
-        for (const { url, dataUrl } of replacements) {
-          processedCss = processedCss.replace(`url(${url})`, `url(${dataUrl})`)
-        }
-        css += "\n" + processedCss
-      } catch {
-        // Skip this stylesheet
-      }
-    }
-    return css
-  } catch (err) {
-    console.warn("Failed to build embedded fonts CSS", err)
-    return ""
-  }
 }
 
 export function useVideoExport() {
@@ -139,6 +88,35 @@ export function useVideoExport() {
       cancelRef.current = false
       setIsExporting(true)
       try {
+        if (options.engine === "webcodecs") {
+          const blob = await exportWithWebCodecs({
+            stageElement,
+            width: options.width,
+            height: options.height,
+            pixelRatio: options.pixelRatio,
+            fps: options.fps,
+            quality: options.quality,
+            duration: options.duration,
+            backgroundColor: config.useGradient ? undefined : config.backgroundColor,
+            setManualProgress,
+            isCancelled: () => cancelRef.current,
+            onProgress: (phase, framesDone, totalFrames, overall) =>
+              setProgress({
+                phase,
+                currentFrame: framesDone,
+                totalFrames,
+                message: phase === "rendering" ? `Renderizando frames... ${framesDone}/${totalFrames}` : "Finalizando...",
+                overallProgress: overall,
+              }),
+          })
+          if (!blob) {
+            setProgress({ phase: "idle", currentFrame: 0, totalFrames: 0, message: "Exportación cancelada", overallProgress: 0 })
+            return null
+          }
+          setProgress({ phase: "done", currentFrame: 0, totalFrames: 0, message: "Video exportado correctamente", overallProgress: 1 })
+          return blob
+        }
+
         // 1. Load ffmpeg
         setProgress({
           phase: "loading-ffmpeg",

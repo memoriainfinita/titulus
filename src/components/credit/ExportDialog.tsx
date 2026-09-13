@@ -26,6 +26,7 @@ import {
 import { useCreditStore } from "@/lib/credit/store"
 import { useVideoExport, ExportProgress } from "@/lib/credit/useVideoExport"
 import { formatElapsed, estimateRemainingSeconds } from "@/lib/credit/exportTiming"
+import { canExportWithWebCodecs } from "@/lib/credit/webcodecsExport"
 import { toast } from "sonner"
 
 // File System Access API — not yet in the TS DOM lib in all setups.
@@ -76,6 +77,7 @@ function PhaseIcon({ phase }: { phase: ExportProgress["phase"] }) {
     case "loading-ffmpeg":
     case "capturing":
     case "encoding":
+    case "rendering":
     case "finalizing":
       return <Loader2 className="h-5 w-5 animate-spin text-primary" />
     case "done":
@@ -100,6 +102,9 @@ export function ExportDialog({
   const [scale, setScale] = React.useState(1)
   const [quality, setQuality] = React.useState<"fast" | "balanced" | "high">("balanced")
   const [format, setFormat] = React.useState<"mp4" | "webm">("mp4")
+  const [engine, setEngine] = React.useState<"webcodecs" | "ffmpeg">("webcodecs")
+  // null while the encoder support check is pending
+  const [webcodecsSupported, setWebcodecsSupported] = React.useState<boolean | null>(null)
   const [resultBlob, setResultBlob] = React.useState<Blob | null>(null)
   const [elapsedMs, setElapsedMs] = React.useState(0)
   const [savedToFile, setSavedToFile] = React.useState(false)
@@ -147,6 +152,22 @@ export function ExportDialog({
   const outHeight = evenDim(config.stageHeight * scale)
   const SCALE_PRESETS = [1, 1.5, 2, 3]
 
+  // Check H.264 encoder support when the dialog opens (and when the target
+  // changes), so an unsupported browser never reaches the save picker.
+  React.useEffect(() => {
+    if (!open) return
+    let alive = true
+    canExportWithWebCodecs(outWidth, outHeight, quality).then((ok) => {
+      if (alive) setWebcodecsSupported(ok)
+    })
+    return () => {
+      alive = false
+    }
+  }, [open, outWidth, outHeight, quality])
+
+  const webcodecsAvailable = webcodecsSupported === true && format === "mp4"
+  const effectiveEngine = engine === "webcodecs" && webcodecsAvailable ? "webcodecs" : "ffmpeg"
+
   // Per-phase ETA: capturing is linear in frames; encoding maps to the 0.6-0.95
   // slice of the overall bar reported by ffmpeg. Reading the ref and the clock
   // during render is intentional: the dialog re-renders every second via the
@@ -154,7 +175,7 @@ export function ExportDialog({
   // eslint-disable-next-line react-hooks/refs, react-hooks/purity -- ver comentario
   const phaseElapsedMs = phaseStartRef.current != null ? performance.now() - phaseStartRef.current : 0
   let etaSeconds: number | null = null
-  if (progress.phase === "capturing" && progress.totalFrames > 0) {
+  if ((progress.phase === "capturing" || progress.phase === "rendering") && progress.totalFrames > 0) {
     etaSeconds = estimateRemainingSeconds(phaseElapsedMs, progress.currentFrame / progress.totalFrames)
   } else if (progress.phase === "encoding") {
     etaSeconds = estimateRemainingSeconds(phaseElapsedMs, (progress.overallProgress - 0.6) / 0.35)
@@ -205,6 +226,7 @@ export function ExportDialog({
         config,
         config.mode,
         {
+          engine: effectiveEngine,
           fps,
           width: config.stageWidth,
           height: config.stageHeight,
@@ -302,6 +324,42 @@ export function ExportDialog({
           {/* Settings */}
           {!isExporting && progress.phase !== "done" && progress.phase !== "error" && (
             <>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Motor</Label>
+                <RadioGroup
+                  value={effectiveEngine}
+                  onValueChange={(v) => setEngine(v as "webcodecs" | "ffmpeg")}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <RadioGroupItem value="webcodecs" id="eng-webcodecs" disabled={!webcodecsAvailable} />
+                    <div>
+                      <Label htmlFor="eng-webcodecs" className="cursor-pointer font-medium text-sm">
+                        Rápido
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {webcodecsSupported === null
+                          ? "Comprobando..."
+                          : !webcodecsSupported
+                          ? "No disponible en este navegador"
+                          : format !== "mp4"
+                          ? "Solo MP4"
+                          : "WebCodecs, solo MP4"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <RadioGroupItem value="ffmpeg" id="eng-ffmpeg" />
+                    <div>
+                      <Label htmlFor="eng-ffmpeg" className="cursor-pointer font-medium text-sm">
+                        Compatible
+                      </Label>
+                      <p className="text-xs text-muted-foreground">FFmpeg, MP4 o WebM</p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Formato</Label>
                 <RadioGroup
@@ -419,7 +477,9 @@ export function ExportDialog({
                   <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
                     <p className="font-medium">Información sobre la exportación</p>
                     <ul className="list-disc list-inside space-y-0.5 ml-1">
-                      <li>La primera exportación descarga el motor ffmpeg (~30 MB).</li>
+                      {effectiveEngine === "ffmpeg" && (
+                        <li>La primera exportación descarga el motor ffmpeg (~30 MB).</li>
+                      )}
                       <li>Se captura frame a frame, así que tardará proporcionalmente a la duración.</li>
                       <li>El navegador debe permanecer abierto y en primer plano durante el proceso.</li>
                     </ul>
@@ -427,7 +487,7 @@ export function ExportDialog({
                 </div>
               </div>
 
-              <Button onClick={handleExport} className="w-full" size="lg">
+              <Button onClick={handleExport} className="w-full" size="lg" disabled={webcodecsSupported === null}>
                 <Download className="h-4 w-4 mr-2" />
                 Iniciar exportación
               </Button>

@@ -1,0 +1,188 @@
+"use client"
+
+import { toCanvas } from "html-to-image"
+import { BufferTarget, CanvasSource, Mp4OutputFormat, Output, Quality, canEncodeVideo } from "mediabunny"
+import { buildEmbeddedFontsCSS } from "@/lib/credit/fontEmbed"
+import { FontUsage, ParsedFontFace, parseFontFaces, selectFontFaces } from "@/lib/credit/fontSubset"
+import {
+  ExportQuality,
+  WEBCODECS_QUALITY,
+  evenDimension,
+  frameTiming,
+  renderingProgress,
+} from "@/lib/credit/exportSettings"
+
+export interface WebCodecsExportParams {
+  stageElement: HTMLElement
+  width: number
+  height: number
+  pixelRatio: number
+  fps: number
+  quality: ExportQuality
+  duration: number
+  backgroundColor: string | undefined
+  setManualProgress: (p: number) => void
+  onProgress: (phase: "rendering" | "finalizing", framesDone: number, totalFrames: number, overall: number) => void
+  isCancelled: () => boolean
+}
+
+// Checked when the dialog opens, before the user picks a save destination.
+export async function canExportWithWebCodecs(width: number, height: number, quality: ExportQuality): Promise<boolean> {
+  if (typeof VideoEncoder === "undefined") return false
+  try {
+    return await canEncodeVideo("avc", { width, height, quality: new Quality(WEBCODECS_QUALITY[quality]) })
+  } catch {
+    return false
+  }
+}
+
+// Per frame: deterministic render -> toCanvas -> staging canvas -> hardware H.264.
+// Returns null when cancelled.
+export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blob | null> {
+  const totalFrames = Math.max(1, Math.ceil(p.duration * p.fps))
+  const outWidth = evenDimension(p.width * p.pixelRatio)
+  const outHeight = evenDimension(p.height * p.pixelRatio)
+
+  // CanvasSource wraps ONE canvas; html-to-image returns a new one per frame.
+  const staging = document.createElement("canvas")
+  staging.width = outWidth
+  staging.height = outHeight
+  const ctx = staging.getContext("2d")
+  if (!ctx) throw new Error("No se pudo crear el canvas de exportación")
+
+  const output = new Output({
+    format: new Mp4OutputFormat({ fastStart: "in-memory" }),
+    target: new BufferTarget(),
+  })
+  const source = new CanvasSource(staging, {
+    codec: "avc",
+    quality: new Quality(WEBCODECS_QUALITY[p.quality]),
+    hardwareAcceleration: "prefer-hardware",
+  })
+  output.addVideoTrack(source, { frameRate: p.fps })
+
+  try {
+    await output.start()
+    // null = no Google Fonts embedded: html-to-image collects fonts itself, as before.
+    let fontFaces: ParsedFontFace[] | null = null
+    const fontSubset = memoFontSubset()
+
+    for (let i = 0; i < totalFrames; i++) {
+      if (p.isCancelled()) {
+        await output.cancel()
+        return null
+      }
+
+      p.setManualProgress(i / (totalFrames - 1 || 1))
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+      await new Promise((r) => setTimeout(r, 16))
+      if (i === 0) {
+        const css = (await buildEmbeddedFontsCSS()) + customFontFacesCSS()
+        fontFaces = css.trim() ? parseFontFaces(css) : null
+      }
+
+      const fontEmbedCSS = fontFaces ? fontSubset(fontFaces, p.stageElement) : null
+      const frame = await captureFrame(p, fontEmbedCSS)
+      // Alpha is dropped by H.264; paint black first like the FFmpeg path did.
+      ctx.fillStyle = "#000"
+      ctx.fillRect(0, 0, outWidth, outHeight)
+      ctx.drawImage(frame, 0, 0, outWidth, outHeight)
+
+      const { timestamp, duration } = frameTiming(i, p.fps)
+      await source.add(timestamp, duration) // backpressure: must be awaited
+
+      p.onProgress("rendering", i + 1, totalFrames, renderingProgress(i + 1, totalFrames))
+    }
+
+    if (p.isCancelled()) {
+      await output.cancel()
+      return null
+    }
+    p.onProgress("finalizing", totalFrames, totalFrames, 0.97)
+    await output.finalize()
+
+    const buffer = output.target.buffer
+    if (!buffer) throw new Error("El codificador no devolvió datos")
+    return new Blob([buffer], { type: "video/mp4" })
+  } catch (err) {
+    if (output.state !== "finalized" && output.state !== "canceled") await output.cancel().catch(() => {})
+    throw err
+  }
+}
+
+// Uploaded fonts: FontLoader injects their @font-face (data URL) as
+// <style id="font-face-..."> (see fontFaceStyleId). With skipFonts they would be
+// dropped from the capture, so they join the embeddable pool.
+function customFontFacesCSS(): string {
+  return Array.from(document.querySelectorAll<HTMLStyleElement>('style[id^="font-face-"]'))
+    .map((el) => "\n" + (el.textContent ?? ""))
+    .join("")
+}
+
+// Fonts and characters rendered in the stage right now. Read per frame because
+// appearing mode mounts different items (and fonts) over time.
+function collectFontUsage(root: HTMLElement): { usages: FontUsage[]; codepoints: Set<number> } {
+  const faces = new Set<string>()
+  const codepoints = new Set<number>()
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+  for (let node: Node | null = root; node; node = walker.nextNode()) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const cs = getComputedStyle(node as Element)
+      for (const family of cs.fontFamily.split(",")) faces.add(`${family}|${cs.fontWeight}|${cs.fontStyle}`)
+    } else {
+      for (const ch of node.textContent ?? "") codepoints.add(ch.codePointAt(0)!)
+    }
+  }
+  const usages = [...faces].map((key) => {
+    const [family, weight, style] = key.split("|")
+    return { family, weight: Number(weight), style }
+  })
+  return { usages, codepoints }
+}
+
+// Rebuild the subset only when the rendered fonts or characters change, so
+// consecutive frames reuse the same CSS string.
+function memoFontSubset() {
+  let lastKey = ""
+  let lastCSS = ""
+  return (faces: ParsedFontFace[], root: HTMLElement): string => {
+    const { usages, codepoints } = collectFontUsage(root)
+    const key =
+      usages.map((u) => `${u.family}|${u.weight}|${u.style}`).sort().join(";") +
+      "#" +
+      [...codepoints].sort((a, b) => a - b).join(",")
+    if (key !== lastKey) {
+      lastKey = key
+      lastCSS = selectFontFaces(faces, usages, codepoints)
+    }
+    return lastCSS
+  }
+}
+
+async function captureFrame(p: WebCodecsExportParams, fontEmbedCSS: string | null): Promise<HTMLCanvasElement> {
+  // Same CORS-noise filter as the FFmpeg path (fonts are embedded via fontEmbedCSS).
+  const originalConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    const msg = args.map((a) => (typeof a === "string" ? a : (a as { message?: string })?.message || "")).join(" ")
+    if (
+      ["cssRules", "CSSStyleSheet", "Cannot access rules", "Error loading remote stylesheet", "Failed to fetch"].some(
+        (s) => msg.includes(s),
+      )
+    )
+      return
+    originalConsoleError.apply(console, args as never)
+  }
+  try {
+    return await toCanvas(p.stageElement, {
+      width: p.width,
+      height: p.height,
+      pixelRatio: p.pixelRatio,
+      // An empty subset is still "provided": html-to-image checks != null.
+      fontEmbedCSS: fontEmbedCSS ?? undefined,
+      skipFonts: fontEmbedCSS !== null,
+      backgroundColor: p.backgroundColor,
+    })
+  } finally {
+    console.error = originalConsoleError
+  }
+}
