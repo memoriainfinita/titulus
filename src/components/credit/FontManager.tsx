@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Plus, Trash2, Upload, Search, Type } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { GOOGLE_FONTS, SYSTEM_FONTS, buildGoogleFontUrl, buildFontFaceRule, buildSystemFontFamily, fontFaceStyleId } from "@/lib/credit/fonts"
 import { FontItem } from "@/lib/credit/types"
 import { fontInUseByItems } from "@/lib/credit/rich"
@@ -22,7 +23,9 @@ import { toast } from "sonner"
 import { v4 as uuid } from "uuid"
 
 export function FontManager() {
-  const { fonts, addFont, removeFont, config, updateConfig, items } = useCreditStore()
+  const { fonts, addFont, removeFont, config, updateConfig, items } = useCreditStore(
+    useShallow((s) => ({ fonts: s.fonts, addFont: s.addFont, removeFont: s.removeFont, config: s.config, updateConfig: s.updateConfig, items: s.items })),
+  )
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 

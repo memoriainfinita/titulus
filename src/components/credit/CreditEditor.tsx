@@ -15,6 +15,7 @@ import {
   Layers,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { CreditItem, CreditItemType, CREDIT_TYPE_LABELS, DEFAULT_ITEMS } from "@/lib/credit/types"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -63,7 +64,9 @@ function ItemRow({ item, index, isSelected, onSelect }: {
   isSelected: boolean
   onSelect: () => void
 }) {
-  const { removeItem, duplicateItem, moveItem, reorderItems, items, config, requestSeek } = useCreditStore()
+  const { removeItem, duplicateItem, moveItem, reorderItems, items, config, requestSeek } = useCreditStore(
+    useShallow((s) => ({ removeItem: s.removeItem, duplicateItem: s.duplicateItem, moveItem: s.moveItem, reorderItems: s.reorderItems, items: s.items, config: s.config, requestSeek: s.requestSeek })),
+  )
   const isActive = useCreditStore((s) => s.activeItemId === item.id)
   const Icon = TYPE_ICONS[item.type]
   const isFirst = index === 0
@@ -242,7 +245,9 @@ function InsertGap({ index }: { index: number }) {
 }
 
 export function CreditEditor() {
-  const { items, selectedItemId, selectItem, addItem, clearItems, loadItems } = useCreditStore()
+  const { items, selectedItemId, selectItem, addItem, clearItems, loadItems } = useCreditStore(
+    useShallow((s) => ({ items: s.items, selectedItemId: s.selectedItemId, selectItem: s.selectItem, addItem: s.addItem, clearItems: s.clearItems, loadItems: s.loadItems })),
+  )
   const [exampleOpen, setExampleOpen] = React.useState(false)
 
   const loadExample = () => loadItems(DEFAULT_ITEMS.map((i) => ({ ...i })))
