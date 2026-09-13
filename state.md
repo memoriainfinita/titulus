@@ -158,7 +158,7 @@
   Diseñado 2026-07-04: spec `docs/superpowers/specs/2026-07-04-webcodecs-export-engine-design.md` +
   plan `docs/superpowers/plans/2026-07-04-webcodecs-export-engine.md` (5 tareas, suite objetivo 216).
   Aplazado 2026-09-13 por decisión del usuario: la app se publica con el export FFmpeg actual y WebCodecs queda como mejora futura.
-- [ ] Probar el motor Rápido en `memoriainfinita.github.io/titulus` tras el push, y en Firefox/Safari (solo verificado en Chrome headless en local).
+- [ ] Probar la exportación en Firefox y Safari. En Pages (`memoriainfinita.github.io/titulus`) verificado 2026-09-13 solo con Chrome headless: modo aparición con fuente subida + Playfair, Rápido 33,8 s y FFmpeg 60,2 s para 9 s de vídeo, ambos correctos. Playwright en esta máquina solo tiene Chromium.
 - [x] Bug en la ruta FFmpeg: con Google Fonts en el documento, `skipFonts: true` dejaba fuera las fuentes subidas y el vídeo salía con la fuente de reserva (Times). Confirmado 2026-09-13 (616 s para 22 s de vídeo, Times). Resuelto 2026-09-13: FFmpeg usa también `createFrameFontEmbedder`; mismo proyecto con la fuente correcta en 178 s.
 - [ ] Motor Rápido: tras el arreglo quedan ~220 ms/frame (medido: 1145 frames en 255 s). Captura aislada ~100 ms; el resto sin desglosar (dos RAF, espera de 16 ms, re-render de React, `add()`). Siguiente candidato si hace falta más velocidad: snapDOM o render directo a canvas (ver investigación de 2026-07-03).
 - [x] Bug: en el vídeo exportado se ven los botones de navegación. No reproducible 2026-06-23: el export captura `exportStageRef` (escenario oculto sin controles); el usuario confirmó MP4 limpio tras recompilar. La captura previa con controles era de un build anterior.
