@@ -4,6 +4,8 @@ export type CreditItemType = "text" | "spacer" | "divider" | "image"
 
 export type Alignment = "left" | "center" | "right"
 
+export type BackgroundImageFit = "cover" | "contain"
+
 export type CreditMode = "scroll" | "appearing"
 
 export type AnimationType =
@@ -123,6 +125,9 @@ export interface CreditConfig {
   gradientFrom: string
   gradientTo: string
   gradientAngle: number
+  backgroundImage: string // data URL; empty = no image
+  backgroundImageFit: BackgroundImageFit
+  backgroundImageDim: number // 0-1 black overlay over the image
   // Layout
   alignment: Alignment
   itemSpacing: number
@@ -187,6 +192,9 @@ export const DEFAULT_CONFIG: CreditConfig = {
   gradientFrom: "#000000",
   gradientTo: "#1a1a2e",
   gradientAngle: 180,
+  backgroundImage: "",
+  backgroundImageFit: "cover",
+  backgroundImageDim: 0,
   alignment: "center",
   itemSpacing: 24,
   paddingX: 80,
