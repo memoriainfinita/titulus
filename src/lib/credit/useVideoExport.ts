@@ -5,7 +5,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { toBlobURL } from "@ffmpeg/util"
 import { toPng } from "html-to-image"
 import { CreditConfig, CreditItem, CreditMode } from "@/lib/credit/types"
-import { buildEmbeddedFontsCSS } from "@/lib/credit/fontEmbed"
+import { createFrameFontEmbedder } from "@/lib/credit/fontEmbed"
 import { exportWithWebCodecs } from "@/lib/credit/webcodecsExport"
 
 export interface ExportOptions {
@@ -155,8 +155,8 @@ export function useVideoExport() {
           // ignore
         }
 
-        // Pre-fetch and embed Google Fonts as data URLs to avoid CORS issues during capture
-        let fontEmbedCSS = ""
+        // Embedded fonts (Google + uploaded), subset per frame: see createFrameFontEmbedder
+        const fonts = createFrameFontEmbedder()
 
         for (let i = 0; i < totalFrames; i++) {
           if (cancelRef.current) {
@@ -181,10 +181,9 @@ export function useVideoExport() {
           // Small extra delay for fonts/images to settle
           await new Promise((r) => setTimeout(r, 16))
 
-          // On first frame, build the embedded fonts CSS to use for all subsequent captures
-          if (i === 0 && !fontEmbedCSS) {
-            fontEmbedCSS = await buildEmbeddedFontsCSS()
-          }
+          // On first frame, collect the embeddable font faces for all subsequent captures
+          if (i === 0) await fonts.prepare()
+          const fontEmbedCSS = fonts.cssFor(stageElement)
 
           // Capture frame as PNG
           // Suppress CORS errors from html-to-image trying to read Google Fonts CSS rules
@@ -212,8 +211,9 @@ export function useVideoExport() {
               pixelRatio: options.pixelRatio,
               // Provide embedded fonts CSS to avoid CORS issues with Google Fonts CDN.
               // When provided, html-to-image skips its own (CORS-blocked) font collection.
-              fontEmbedCSS: fontEmbedCSS || undefined,
-              skipFonts: !!fontEmbedCSS,
+              // An empty subset is still "provided": html-to-image checks != null.
+              fontEmbedCSS: fontEmbedCSS ?? undefined,
+              skipFonts: fontEmbedCSS !== null,
               backgroundColor: config.useGradient
                 ? undefined
                 : config.backgroundColor,

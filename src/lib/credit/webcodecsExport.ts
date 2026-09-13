@@ -2,8 +2,7 @@
 
 import { toCanvas } from "html-to-image"
 import { BufferTarget, CanvasSource, Mp4OutputFormat, Output, Quality, canEncodeVideo } from "mediabunny"
-import { buildEmbeddedFontsCSS } from "@/lib/credit/fontEmbed"
-import { FontUsage, ParsedFontFace, parseFontFaces, selectFontFaces } from "@/lib/credit/fontSubset"
+import { createFrameFontEmbedder } from "@/lib/credit/fontEmbed"
 import {
   ExportQuality,
   WEBCODECS_QUALITY,
@@ -63,9 +62,7 @@ export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blo
 
   try {
     await output.start()
-    // null = no Google Fonts embedded: html-to-image collects fonts itself, as before.
-    let fontFaces: ParsedFontFace[] | null = null
-    const fontSubset = memoFontSubset()
+    const fonts = createFrameFontEmbedder()
 
     for (let i = 0; i < totalFrames; i++) {
       if (p.isCancelled()) {
@@ -76,13 +73,9 @@ export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blo
       p.setManualProgress(i / (totalFrames - 1 || 1))
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
       await new Promise((r) => setTimeout(r, 16))
-      if (i === 0) {
-        const css = (await buildEmbeddedFontsCSS()) + customFontFacesCSS()
-        fontFaces = css.trim() ? parseFontFaces(css) : null
-      }
+      if (i === 0) await fonts.prepare()
 
-      const fontEmbedCSS = fontFaces ? fontSubset(fontFaces, p.stageElement) : null
-      const frame = await captureFrame(p, fontEmbedCSS)
+      const frame = await captureFrame(p, fonts.cssFor(p.stageElement))
       // Alpha is dropped by H.264; paint black first like the FFmpeg path did.
       ctx.fillStyle = "#000"
       ctx.fillRect(0, 0, outWidth, outHeight)
@@ -107,55 +100,6 @@ export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blo
   } catch (err) {
     if (output.state !== "finalized" && output.state !== "canceled") await output.cancel().catch(() => {})
     throw err
-  }
-}
-
-// Uploaded fonts: FontLoader injects their @font-face (data URL) as
-// <style id="font-face-..."> (see fontFaceStyleId). With skipFonts they would be
-// dropped from the capture, so they join the embeddable pool.
-function customFontFacesCSS(): string {
-  return Array.from(document.querySelectorAll<HTMLStyleElement>('style[id^="font-face-"]'))
-    .map((el) => "\n" + (el.textContent ?? ""))
-    .join("")
-}
-
-// Fonts and characters rendered in the stage right now. Read per frame because
-// appearing mode mounts different items (and fonts) over time.
-function collectFontUsage(root: HTMLElement): { usages: FontUsage[]; codepoints: Set<number> } {
-  const faces = new Set<string>()
-  const codepoints = new Set<number>()
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
-  for (let node: Node | null = root; node; node = walker.nextNode()) {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const cs = getComputedStyle(node as Element)
-      for (const family of cs.fontFamily.split(",")) faces.add(`${family}|${cs.fontWeight}|${cs.fontStyle}`)
-    } else {
-      for (const ch of node.textContent ?? "") codepoints.add(ch.codePointAt(0)!)
-    }
-  }
-  const usages = [...faces].map((key) => {
-    const [family, weight, style] = key.split("|")
-    return { family, weight: Number(weight), style }
-  })
-  return { usages, codepoints }
-}
-
-// Rebuild the subset only when the rendered fonts or characters change, so
-// consecutive frames reuse the same CSS string.
-function memoFontSubset() {
-  let lastKey = ""
-  let lastCSS = ""
-  return (faces: ParsedFontFace[], root: HTMLElement): string => {
-    const { usages, codepoints } = collectFontUsage(root)
-    const key =
-      usages.map((u) => `${u.family}|${u.weight}|${u.style}`).sort().join(";") +
-      "#" +
-      [...codepoints].sort((a, b) => a - b).join(",")
-    if (key !== lastKey) {
-      lastKey = key
-      lastCSS = selectFontFaces(faces, usages, codepoints)
-    }
-    return lastCSS
   }
 }
 
