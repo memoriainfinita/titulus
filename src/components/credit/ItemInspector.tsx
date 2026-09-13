@@ -7,6 +7,7 @@ import {
   AlignRight,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { resolveDivider } from "@/lib/credit/separators"
 import { CreditItem, CreditConfig, Alignment, DividerStyle, AnimationType, OverlayLayer } from "@/lib/credit/types"
 import { resolveAnimationType, resolveStaggerLines } from "@/lib/credit/appearing"
@@ -315,7 +316,9 @@ function ShadowOverrides({
 }
 
 export function ItemInspector({ item }: { item: CreditItem }) {
-  const { updateItem, config } = useCreditStore()
+  const { updateItem, config } = useCreditStore(
+    useShallow((s) => ({ updateItem: s.updateItem, config: s.config })),
+  )
 
   const toggleUppercase = () => updateItem(item.id, { uppercase: !item.uppercase })
   const setAlign = (align: Alignment) =>

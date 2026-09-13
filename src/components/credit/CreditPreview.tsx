@@ -41,6 +41,7 @@ function SafeMarginsOverlay() {
   )
 }
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { ScrollCredits } from "./ScrollCredits"
 import { AppearingCredits, getVisibleItems } from "./AppearingCredits"
 import { TimelineBar } from "./TimelineBar"
@@ -55,21 +56,9 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 
 export function CreditPreview() {
-  const {
-    items,
-    config,
-    isPlaying,
-    isFullscreen,
-    previewKey,
-    updateConfig,
-    setPlaying,
-    setFullscreen,
-    restartPreview,
-    exportProject,
-    importProject,
-    projectName,
-    setProjectName,
-  } = useCreditStore()
+  const { items, config, isPlaying, isFullscreen, previewKey, updateConfig, setPlaying, setFullscreen, restartPreview, exportProject, importProject, projectName, setProjectName } = useCreditStore(
+    useShallow((s) => ({ items: s.items, config: s.config, isPlaying: s.isPlaying, isFullscreen: s.isFullscreen, previewKey: s.previewKey, updateConfig: s.updateConfig, setPlaying: s.setPlaying, setFullscreen: s.setFullscreen, restartPreview: s.restartPreview, exportProject: s.exportProject, importProject: s.importProject, projectName: s.projectName, setProjectName: s.setProjectName })),
+  )
 
   const stageRef = React.useRef<HTMLDivElement>(null)
   const exportStageRef = React.useRef<HTMLDivElement>(null)

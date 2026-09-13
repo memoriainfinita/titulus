@@ -24,6 +24,7 @@ import {
   Settings2,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { useVideoExport, ExportProgress } from "@/lib/credit/useVideoExport"
 import { formatElapsed, estimateRemainingSeconds } from "@/lib/credit/exportTiming"
 import { canExportWithWebCodecs } from "@/lib/credit/webcodecsExport"
@@ -96,7 +97,9 @@ export function ExportDialog({
   setManualProgress,
   duration,
 }: ExportDialogProps) {
-  const { items, config, projectName } = useCreditStore()
+  const { items, config, projectName } = useCreditStore(
+    useShallow((s) => ({ items: s.items, config: s.config, projectName: s.projectName })),
+  )
   const { isExporting, progress, exportVideo, cancelExport, reset } = useVideoExport()
   const [fps, setFps] = React.useState(30)
   const [scale, setScale] = React.useState(1)

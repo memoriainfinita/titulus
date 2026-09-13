@@ -22,6 +22,7 @@ import {
   Monitor,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
+import { useShallow } from "zustand/react/shallow"
 import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle, BackgroundImageFit, CREDIT_TYPE_LABELS } from "@/lib/credit/types"
 import { DEFAULT_CONFIG } from "@/lib/credit/types"
 import { downscaleImageFile } from "@/lib/credit/downscaleImage"
@@ -231,7 +232,9 @@ const ANIMATIONS: { value: AnimationType; label: string }[] = [
 ]
 
 export function InspectorPanel() {
-  const { selectedItemId, items, resetConfig } = useCreditStore()
+  const { selectedItemId, items, resetConfig } = useCreditStore(
+    useShallow((s) => ({ selectedItemId: s.selectedItemId, items: s.items, resetConfig: s.resetConfig })),
+  )
   const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined
   const [showGlobal, setShowGlobal] = React.useState(false)
 
@@ -301,7 +304,9 @@ export function InspectorPanel() {
 }
 
 function GlobalConfig() {
-  const { config, updateConfig, fonts } = useCreditStore()
+  const { config, updateConfig, fonts } = useCreditStore(
+    useShallow((s) => ({ config: s.config, updateConfig: s.updateConfig, fonts: s.fonts })),
+  )
 
   return (
       <ScrollArea className="flex-1 min-h-0">
@@ -869,8 +874,9 @@ function GlobalConfig() {
 
 // Quick presets the user can apply
 export function PresetBar() {
-  const { updateConfig, userPresets, saveUserPreset, deleteUserPreset, applyUserPreset } =
-    useCreditStore()
+  const { updateConfig, userPresets, saveUserPreset, deleteUserPreset, applyUserPreset } = useCreditStore(
+    useShallow((s) => ({ updateConfig: s.updateConfig, userPresets: s.userPresets, saveUserPreset: s.saveUserPreset, deleteUserPreset: s.deleteUserPreset, applyUserPreset: s.applyUserPreset })),
+  )
   const [saveOpen, setSaveOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const trimmed = name.trim()
