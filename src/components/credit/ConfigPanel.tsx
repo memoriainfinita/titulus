@@ -22,8 +22,10 @@ import {
   Monitor,
 } from "lucide-react"
 import { useCreditStore } from "@/lib/credit/store"
-import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle, CREDIT_TYPE_LABELS } from "@/lib/credit/types"
+import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle, BackgroundImageFit, CREDIT_TYPE_LABELS } from "@/lib/credit/types"
 import { DEFAULT_CONFIG } from "@/lib/credit/types"
+import { downscaleImageFile } from "@/lib/credit/downscaleImage"
+import { toast } from "sonner"
 import { FontManager } from "./FontManager"
 import { ItemInspector } from "./ItemInspector"
 import { Button } from "@/components/ui/button"
@@ -111,6 +113,79 @@ function Field({ label, children, hint }: { label: string; children: React.React
         {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
+    </div>
+  )
+}
+
+function BackgroundImageControls({
+  config,
+  updateConfig,
+}: {
+  config: CreditConfig
+  updateConfig: (patch: Partial<CreditConfig>) => void
+}) {
+  const inputId = React.useId()
+  return (
+    <div className="space-y-3">
+      <Label className="text-xs">Imagen de fondo</Label>
+      {config.backgroundImage && (
+        <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={config.backgroundImage} alt="" className="h-12 w-auto max-w-[120px] rounded border object-cover" />
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-destructive"
+            onClick={() => updateConfig({ backgroundImage: "" })}>
+            Quitar
+          </Button>
+        </div>
+      )}
+      <input
+        id={inputId}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ""
+          if (!file) return
+          try {
+            updateConfig({ backgroundImage: await downscaleImageFile(file) })
+          } catch {
+            toast.error("No se pudo leer la imagen")
+          }
+        }}
+      />
+      <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+        <label htmlFor={inputId} className="cursor-pointer">
+          {config.backgroundImage ? "Cambiar imagen" : "Subir imagen"}
+        </label>
+      </Button>
+      {config.backgroundImage && (
+        <>
+          <Field label="Ajuste">
+            <Select
+              value={config.backgroundImageFit}
+              onValueChange={(v) => updateConfig({ backgroundImageFit: v as BackgroundImageFit })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cover">Cubrir (recorta)</SelectItem>
+                <SelectItem value="contain">Contener (entera)</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Oscurecer" hint={`${Math.round(config.backgroundImageDim * 100)}%`}>
+            <Slider
+              value={[config.backgroundImageDim]}
+              onValueChange={(v) => updateConfig({ backgroundImageDim: v[0] })}
+              min={0}
+              max={1}
+              step={0.05}
+            />
+          </Field>
+        </>
+      )}
     </div>
   )
 }
@@ -416,6 +491,8 @@ function GlobalConfig() {
                 />
               </Field>
             )}
+            <Separator />
+            <BackgroundImageControls config={config} updateConfig={updateConfig} />
           </Section>
 
           {/* EFFECTS */}

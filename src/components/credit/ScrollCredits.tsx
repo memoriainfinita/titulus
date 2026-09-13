@@ -10,6 +10,7 @@ import { resolveTextBlur } from "@/lib/credit/text-blur"
 import { resolveTextStyle } from "@/lib/credit/textStyle"
 import { resolveImageWidth } from "@/lib/credit/image"
 import { resolveSafeInset } from "@/lib/credit/safeMargins"
+import { resolveBackgroundStyle } from "@/lib/credit/background"
 import { RichText } from "./RichText"
 
 interface ScrollCreditsProps {
@@ -276,11 +277,7 @@ export function ScrollCredits({
   )
 
   // Background style
-  const backgroundStyle: React.CSSProperties = config.useGradient
-    ? {
-        background: `linear-gradient(${config.gradientAngle}deg, ${config.gradientFrom}, ${config.gradientTo})`,
-      }
-    : { backgroundColor: config.backgroundColor }
+  const backgroundStyle = resolveBackgroundStyle(config)
 
   return (
     <div
