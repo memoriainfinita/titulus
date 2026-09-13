@@ -18,9 +18,9 @@
 - Lógica de créditos en `src/lib/credit/` y `src/components/credit/`. Modos: `scroll` y `appearing`.
 - Estado real en cliente con Zustand (persistido en localStorage).
 - Exportación de vídeo: `useVideoExport.ts` elige motor según `ExportOptions.engine`; el diálogo lo muestra como selector "Motor".
-  - Rápido (`webcodecsExport.ts`): por frame `toCanvas` → canvas intermedio de dimensiones pares → Mediabunny `CanvasSource` (H.264 `avc`, `prefer-hardware`) → MP4 en `BufferTarget`. Solo MP4. Incrusta solo las `@font-face` que usa cada frame (`fontSubset.ts`), incluidas las fuentes subidas. Soporte comprobado al abrir el diálogo (`canEncodeVideo`).
-  - Compatible (FFmpeg-wasm, código previo sin cambios): por frame `toPng` → MEMFS → libx264/VP9. MP4 o WebM. Carga el core desde unpkg.
-  - Compartido: `fontEmbed.ts` (`buildEmbeddedFontsCSS`, CSS de Google Fonts con data URLs), `exportSettings.ts` (dimensiones pares, calidad → nivel Mediabunny, timing por frame).
+  - Rápido (`webcodecsExport.ts`): por frame `toCanvas` → canvas intermedio de dimensiones pares → Mediabunny `CanvasSource` (H.264 `avc`, `prefer-hardware`) → MP4 en `BufferTarget`. Solo MP4. Soporte comprobado al abrir el diálogo (`canEncodeVideo`).
+  - Compatible (FFmpeg-wasm, en `useVideoExport.ts`): por frame `toPng` → MEMFS → libx264/VP9. MP4 o WebM. Carga el core desde unpkg.
+  - Compartido: `fontEmbed.ts` (`createFrameFontEmbedder`: CSS de Google Fonts con data URLs + `@font-face` de fuentes subidas; por frame incrusta solo las caras que usa, vía `fontSubset.ts`), `exportSettings.ts` (dimensiones pares, calidad → nivel Mediabunny, timing por frame).
 
 ## Patterns
 - [pnpm] Builds nativos (sharp, swc, parcel/watcher, etc.) se aprueban en `pnpm-workspace.yaml` con `allowBuilds: <pkg>: true`. El bloque `"pnpm"` de `package.json` no lo lee pnpm 11. Confirmed 2026-06.
@@ -95,7 +95,8 @@
 - 2026-09-13: añadido motor de exportación rápido (WebCodecs + Mediabunny 1.56.2) CONSERVANDO FFmpeg, por decisión del usuario (el spec/plan de 2026-07-04 lo eliminaba; no se reescriben). Selector "Motor" visible en el diálogo (Rápido por defecto si hay soporte; WebM fuerza FFmpeg). Archivos nuevos: `webcodecsExport.ts`, `exportSettings.ts` (+9 tests), `fontSubset.ts` (+13 tests), `fontEmbed.ts` (movido tal cual de `useVideoExport.ts`). API de Mediabunny comprobada en sus tipos: `QUALITY_*` obsoletas, se usa `new Quality('medium'|'high'|'very-high')`.
   - Medición inicial: el motor nuevo iba igual de lento que FFmpeg (~1 frame/s en dev y en build de producción). Causa confirmada por instrumentación: SVG de 10,47 MB por frame por las fuentes incrustadas, ~670 ms de carga. Solución solo en el motor rápido: subconjunto de `@font-face` por frame (familia/peso/estilo usados + `unicode-range` del texto visible; si falta el peso o el estilo exacto se incluye la familia entera), memoizado mientras no cambie.
   - Verificado en build estático servido bajo `/titulus/`, Chrome headless: proyecto de ejemplo (38 s, 1145 frames, 1280×720, 30 fps) en 4:15 con Rápido frente a 19:25 con FFmpeg; MP4 H.264 High yuv420p con los mismos frames y duración; SSIM 0,993-0,998 entre ambos. Fuente subida + Playfair Display (Google) en scroll y en aparición: correctas. Cancelar a mitad y volver a exportar: correcto. WebM desactiva Rápido. `tsc`, eslint y 229 tests verdes.
-  - Commits `e031f53` (código) y `33b40c6` (docs). Sin push: el push a `main` despliega Pages.
+  - Commits `e031f53` (código) y `33b40c6` (docs).
+  - Después, a petición del usuario ("arregla todo"): la selección de fuentes por frame pasa a `fontEmbed.ts` (`createFrameFontEmbedder`) y la usa también la ruta FFmpeg. Arregla las fuentes subidas en FFmpeg y la acelera (proyecto de 22 s: 616 s → 178 s). Verificado: fuente subida + Playfair con FFmpeg (scroll) y con Rápido (aparición); `tsc`, eslint, 229 tests.
 
 ## TODO
 
@@ -156,7 +157,7 @@
   plan `docs/superpowers/plans/2026-07-04-webcodecs-export-engine.md` (5 tareas, suite objetivo 216).
   Aplazado 2026-09-13 por decisión del usuario: la app se publica con el export FFmpeg actual y WebCodecs queda como mejora futura.
 - [ ] Probar el motor Rápido en `memoriainfinita.github.io/titulus` tras el push, y en Firefox/Safari (solo verificado en Chrome headless en local).
-- [ ] Bug en la ruta FFmpeg: con Google Fonts en el documento, `skipFonts: true` deja fuera las fuentes subidas y el vídeo sale con la fuente de reserva (Times). Confirmado 2026-09-13 exportando fuente subida + Playfair Display: con FFmpeg sale Times (616 s para 22 s de vídeo); con el motor Rápido sale bien (102 s). Arreglo posible: aplicar también a FFmpeg el subconjunto de `fontSubset.ts`, que además la aceleraría.
+- [x] Bug en la ruta FFmpeg: con Google Fonts en el documento, `skipFonts: true` dejaba fuera las fuentes subidas y el vídeo salía con la fuente de reserva (Times). Confirmado 2026-09-13 (616 s para 22 s de vídeo, Times). Resuelto 2026-09-13: FFmpeg usa también `createFrameFontEmbedder`; mismo proyecto con la fuente correcta en 178 s.
 - [ ] Motor Rápido: tras el arreglo quedan ~220 ms/frame (medido: 1145 frames en 255 s). Captura aislada ~100 ms; el resto sin desglosar (dos RAF, espera de 16 ms, re-render de React, `add()`). Siguiente candidato si hace falta más velocidad: snapDOM o render directo a canvas (ver investigación de 2026-07-03).
 - [x] Bug: en el vídeo exportado se ven los botones de navegación. No reproducible 2026-06-23: el export captura `exportStageRef` (escenario oculto sin controles); el usuario confirmó MP4 limpio tras recompilar. La captura previa con controles era de un build anterior.
 - [ ] Privacidad / envío de datos a terceros. Revisión inicial 2026-06-22: sin analytics ni telemetría; `z-ai-web-dev-sdk` se eliminó (dependencia muerta, no se importaba). Únicas conexiones externas (GET, no envían contenido del usuario): `unpkg.com` (FFmpeg core, al exportar) y `fonts.googleapis.com`/`fonts.gstatic.com` (Google Fonts). Pendiente: auditoría más a fondo y decidir si self-hostear FFmpeg y fuentes para no contactar terceros.
