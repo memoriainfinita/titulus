@@ -1,6 +1,6 @@
 // Browser-only: reads an image file and re-encodes it as a JPEG data URL no
-// larger than maxSide on its long side. Keeps persisted state (localStorage)
-// and the per-frame export capture small.
+// larger than maxSide on its long side. Keeps the saved project and the
+// per-frame export capture small.
 
 import { fitWithin } from "./background"
 

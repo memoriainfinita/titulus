@@ -15,6 +15,30 @@ import {
   CREDIT_TYPE_LABELS,
 } from "./types"
 import { plainToRich, richToPlain, isValidRich } from "./rich"
+import { createProjectStorage, indexedDbBackend, memoryBackend } from "./persistStorage"
+import { toast } from "sonner"
+
+const hasIndexedDb = typeof indexedDB !== "undefined"
+
+let lastErrorToast = 0
+const projectStorage = createProjectStorage<Partial<CreditState>>({
+  backend: hasIndexedDb ? indexedDbBackend("titulus") : memoryBackend(),
+  legacy: hasIndexedDb ? window.localStorage : null,
+  debounceMs: 300,
+  onError: (error) => {
+    console.error("[titulus] persist failed", error)
+    if (Date.now() - lastErrorToast < 10_000) return
+    lastErrorToast = Date.now()
+    toast.error("No se pudo guardar el proyecto en el navegador. Exporta el JSON para no perder cambios.")
+  },
+})
+
+if (hasIndexedDb) {
+  // Best effort: ask the browser not to evict the saved project under storage pressure.
+  navigator.storage?.persist?.().catch(() => {})
+  // Don't lose the last debounced change when the tab closes.
+  window.addEventListener("pagehide", () => { void projectStorage.flush() })
+}
 
 function isPlainObject(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x)
@@ -49,7 +73,7 @@ interface CreditState {
   isPlaying: boolean
   isFullscreen: boolean
   previewKey: number // bump to force preview remount
-  _hasHydrated: boolean // true once persist has rehydrated from localStorage
+  _hasHydrated: boolean // true once persist has rehydrated from IndexedDB
 
   // Actions
   addItem: (type: CreditItemType, text?: string, index?: number) => void
@@ -333,10 +357,8 @@ export const useCreditStore = create<CreditState>()(
       },
     }),
     {
-      // Parametrized per build (NEXT_PUBLIC_ so Next.js inlines it client-side):
-      // parallel deploys under the same origin (e.g. /credits/ and /credits-rich/)
-      // would otherwise share — and corrupt — each other's persisted state.
       name: "titulus-store",
+      storage: projectStorage,
       // Don't persist runtime UI state
       partialize: (state) => ({
         items: state.items,
