@@ -31,7 +31,7 @@ export default function Home() {
             <Film className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-bold text-base leading-tight">Credit Titles Studio</h1>
+            <h1 className="font-bold text-base leading-tight">TITULUS</h1>
             <p className="text-xs text-muted-foreground leading-tight">
               Generador profesional de títulos de crédito
             </p>

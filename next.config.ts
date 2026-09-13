@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
-// PORTABLE=true -> static export served at root (run anywhere with a static server).
-// EXPORT=true   -> static export under a subpath (homelab nginx deploy).
-//                  EXPORT_BASE overrides the subpath (default /credits).
-const portable = process.env.PORTABLE === "true";
-const isExport = process.env.EXPORT === "true" || portable;
-const exportBase = process.env.EXPORT_BASE || "/credits";
+// EXPORT=true -> static export under /titulus (GitHub Pages project site).
+// Plain `next dev` / `next build` are unaffected.
+const isExport = process.env.EXPORT === "true";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
@@ -13,8 +10,7 @@ const nextConfig: NextConfig = {
     output: "export",
     images: { unoptimized: true },
     trailingSlash: true,
-    // basePath only for the VM subpath; the portable build serves from root
-    ...(portable ? {} : { basePath: exportBase }),
+    basePath: "/titulus",
   }),
 };
 
