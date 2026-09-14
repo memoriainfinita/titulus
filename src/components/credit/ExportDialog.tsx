@@ -508,12 +508,7 @@ export function ExportDialog({
                       {effectiveEngine === "ffmpeg" && (
                         <li>La primera exportación descarga el motor ffmpeg (~30 MB).</li>
                       )}
-                      {effectiveEngine === "strip" ? (
-                        <li>
-                          Experimental: sin probar con velocidad menor de 1 px/frame, márgenes seguros, degradado,
-                          escalas ×1.5/×2 ni dirección hacia abajo. Comprueba el vídeo.
-                        </li>
-                      ) : (
+                      {effectiveEngine !== "strip" && (
                         <li>Se captura frame a frame, así que tardará proporcionalmente a la duración.</li>
                       )}
                       <li>El navegador debe permanecer abierto y en primer plano durante el proceso.</li>
