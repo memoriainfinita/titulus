@@ -7,10 +7,12 @@ import { toPng } from "html-to-image"
 import { CreditConfig, CreditItem, CreditMode } from "@/lib/credit/types"
 import { createFrameFontEmbedder } from "@/lib/credit/fontEmbed"
 import { exportWithWebCodecs } from "@/lib/credit/webcodecsExport"
+import { exportScrollStrip } from "@/lib/credit/stripExport"
 
 export interface ExportOptions {
   // "webcodecs": toCanvas + hardware H.264 (MP4 only). "ffmpeg": PNG frames + FFmpeg-wasm.
-  engine: "webcodecs" | "ffmpeg"
+  // "strip": capture the scroll block once, compose frames (experimental, scroll + MP4 only).
+  engine: "webcodecs" | "ffmpeg" | "strip"
   fps: number
   width: number
   height: number
@@ -83,32 +85,53 @@ export function useVideoExport() {
       mode: CreditMode,
       options: ExportOptions,
       // Function to set manual progress on the credits component (0-1)
-      setManualProgress: (p: number) => void,
+      setManualProgress: (p: number | null) => void,
     ): Promise<Blob | null> => {
       cancelRef.current = false
       setIsExporting(true)
       try {
-        if (options.engine === "webcodecs") {
-          const blob = await exportWithWebCodecs({
-            stageElement,
-            width: options.width,
-            height: options.height,
-            pixelRatio: options.pixelRatio,
-            fps: options.fps,
-            quality: options.quality,
-            duration: options.duration,
-            backgroundColor: config.useGradient ? undefined : config.backgroundColor,
-            setManualProgress,
-            isCancelled: () => cancelRef.current,
-            onProgress: (phase, framesDone, totalFrames, overall) =>
-              setProgress({
-                phase,
-                currentFrame: framesDone,
-                totalFrames,
-                message: phase === "rendering" ? `Renderizando frames... ${framesDone}/${totalFrames}` : "Finalizando...",
-                overallProgress: overall,
-              }),
-          })
+        if (options.engine === "strip" || options.engine === "webcodecs") {
+          const onProgress = (
+            phase: "rendering" | "finalizing",
+            framesDone: number,
+            totalFrames: number,
+            overall: number,
+          ) =>
+            setProgress({
+              phase,
+              currentFrame: framesDone,
+              totalFrames,
+              message: phase === "rendering" ? `Renderizando frames... ${framesDone}/${totalFrames}` : "Finalizando...",
+              overallProgress: overall,
+            })
+          const isCancelled = () => cancelRef.current
+          const blob =
+            options.engine === "strip"
+              ? await exportScrollStrip({
+                  stageElement,
+                  items,
+                  config,
+                  pixelRatio: options.pixelRatio,
+                  fps: options.fps,
+                  quality: options.quality,
+                  duration: options.duration,
+                  setManualProgress,
+                  onProgress,
+                  isCancelled,
+                })
+              : await exportWithWebCodecs({
+                  stageElement,
+                  width: options.width,
+                  height: options.height,
+                  pixelRatio: options.pixelRatio,
+                  fps: options.fps,
+                  quality: options.quality,
+                  duration: options.duration,
+                  backgroundColor: config.useGradient ? undefined : config.backgroundColor,
+                  setManualProgress,
+                  isCancelled,
+                  onProgress,
+                })
           if (!blob) {
             setProgress({ phase: "idle", currentFrame: 0, totalFrames: 0, message: "Exportación cancelada", overallProgress: 0 })
             return null

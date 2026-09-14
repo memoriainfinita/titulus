@@ -53,7 +53,7 @@ interface ExportDialogProps {
   // Stage element ref to capture from (the hidden export stage)
   stageRef: React.RefObject<HTMLDivElement | null>
   // Function to set manual progress on the export-stage credits component
-  setManualProgress: (p: number) => void
+  setManualProgress: (p: number | null) => void
   // Measured duration in seconds
   duration: number
 }
@@ -105,7 +105,7 @@ export function ExportDialog({
   const [scale, setScale] = React.useState(1)
   const [quality, setQuality] = React.useState<"fast" | "balanced" | "high">("balanced")
   const [format, setFormat] = React.useState<"mp4" | "webm">("mp4")
-  const [engine, setEngine] = React.useState<"webcodecs" | "ffmpeg">("webcodecs")
+  const [engine, setEngine] = React.useState<"webcodecs" | "ffmpeg" | "strip">("webcodecs")
   // null while the encoder support check is pending
   const [webcodecsSupported, setWebcodecsSupported] = React.useState<boolean | null>(null)
   const [resultBlob, setResultBlob] = React.useState<Blob | null>(null)
@@ -169,7 +169,13 @@ export function ExportDialog({
   }, [open, outWidth, outHeight, quality])
 
   const webcodecsAvailable = webcodecsSupported === true && format === "mp4"
-  const effectiveEngine = engine === "webcodecs" && webcodecsAvailable ? "webcodecs" : "ffmpeg"
+  const stripAvailable = webcodecsAvailable && config.mode === "scroll"
+  const effectiveEngine =
+    engine === "strip" && stripAvailable
+      ? "strip"
+      : engine !== "ffmpeg" && webcodecsAvailable
+      ? "webcodecs"
+      : "ffmpeg"
 
   // Per-phase ETA: capturing is linear in frames; encoding maps to the 0.6-0.95
   // slice of the overall bar reported by ffmpeg. Reading the ref and the clock
@@ -331,8 +337,8 @@ export function ExportDialog({
                 <Label className="text-xs text-muted-foreground">Motor</Label>
                 <RadioGroup
                   value={effectiveEngine}
-                  onValueChange={(v) => setEngine(v as "webcodecs" | "ffmpeg")}
-                  className="grid grid-cols-2 gap-2"
+                  onValueChange={(v) => setEngine(v as "webcodecs" | "ffmpeg" | "strip")}
+                  className="grid grid-cols-3 gap-2"
                 >
                   <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
                     <RadioGroupItem value="webcodecs" id="eng-webcodecs" disabled={!webcodecsAvailable} />
@@ -358,6 +364,25 @@ export function ExportDialog({
                         Compatible
                       </Label>
                       <p className="text-xs text-muted-foreground">FFmpeg, MP4 o WebM</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
+                    <RadioGroupItem value="strip" id="eng-strip" disabled={!stripAvailable} />
+                    <div>
+                      <Label htmlFor="eng-strip" className="cursor-pointer font-medium text-sm">
+                        Experimental
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {webcodecsSupported === null
+                          ? "Comprobando..."
+                          : config.mode !== "scroll"
+                          ? "Solo modo scroll"
+                          : format !== "mp4"
+                          ? "Solo MP4"
+                          : !webcodecsSupported
+                          ? "No disponible en este navegador"
+                          : "Captura única, solo scroll"}
+                      </p>
                     </div>
                   </div>
                 </RadioGroup>
@@ -483,7 +508,14 @@ export function ExportDialog({
                       {effectiveEngine === "ffmpeg" && (
                         <li>La primera exportación descarga el motor ffmpeg (~30 MB).</li>
                       )}
-                      <li>Se captura frame a frame, así que tardará proporcionalmente a la duración.</li>
+                      {effectiveEngine === "strip" ? (
+                        <li>
+                          Experimental: sin probar con velocidad menor de 1 px/frame, márgenes seguros, degradado,
+                          escalas ×1.5/×2 ni dirección hacia abajo. Comprueba el vídeo.
+                        </li>
+                      ) : (
+                        <li>Se captura frame a frame, así que tardará proporcionalmente a la duración.</li>
+                      )}
                       <li>El navegador debe permanecer abierto y en primer plano durante el proceso.</li>
                     </ul>
                   </div>

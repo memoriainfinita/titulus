@@ -385,6 +385,7 @@ export function ScrollCredits({
       )}
       <div
         ref={contentRef}
+        data-scroll-content
         className="absolute"
         style={{
           left: `${resolveSafeInset(config) * 100}%`,
