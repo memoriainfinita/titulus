@@ -448,6 +448,7 @@ export function CreditPreview() {
               restartKey={previewKey}
               manualProgress={exportProgress}
               onDurationChange={setMeasuredDuration}
+              virtualize
             />
           ) : (
             <AppearingCredits
