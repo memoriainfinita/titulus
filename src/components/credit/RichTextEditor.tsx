@@ -108,10 +108,10 @@ export function RichTextEditor({
           placeholder="px"
           onChange={(e) => {
             const raw = e.target.value
-            if (raw === "") { editor.chain().focus().unsetFontSize().run(); return }
+            if (raw === "") { editor.chain().unsetFontSize().run(); return }
             const n = Number(raw)
             if (Number.isNaN(n) || n <= 0) return
-            editor.chain().focus().setFontSize(`${n}px`).run()
+            editor.chain().setFontSize(`${n}px`).run()
           }}
           className="h-7 w-16 text-xs"
         />
