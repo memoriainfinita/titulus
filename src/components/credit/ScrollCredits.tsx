@@ -13,6 +13,7 @@ import { resolveImageWidth } from "@/lib/credit/image"
 import { resolveSafeInset } from "@/lib/credit/safeMargins"
 import { resolveBackgroundStyle } from "@/lib/credit/background"
 import { resolveOverlay, overlayStartSec, overlayOpacityAt } from "@/lib/credit/overlay"
+import { Box, visibleRange, leadingSpacerHeight } from "@/lib/credit/virtualize"
 import { RichText } from "./RichText"
 
 interface ScrollCreditsProps {
@@ -34,6 +35,8 @@ interface ScrollCreditsProps {
     contentHeight: number
     containerHeight: number
   }) => void
+  // Export stage only: with manualProgress set, render just the items near the stage.
+  virtualize?: boolean
 }
 
 // Build the inline style for an individual credit item
@@ -65,6 +68,13 @@ function getItemStyle(item: CreditItem, config: CreditConfig): React.CSSProperti
     whiteSpace: ts.whiteSpace,
     wordBreak: ts.wordBreak,
   }
+}
+
+// Top margin CreditLine gives each item; must match its styles below.
+function marginTopOf(item: CreditItem, config: CreditConfig): number {
+  if (item.type === "text" || item.type === "divider") return config.itemSpacing
+  if (item.type === "image") return item.imageSrc ? config.itemSpacing : 0
+  return 0
 }
 
 // Render a single item, including dividers and spacers
@@ -156,6 +166,7 @@ export function ScrollCredits({
   onDurationChange,
   onProgressChange,
   onLayoutChange,
+  virtualize = false,
 }: ScrollCreditsProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
@@ -163,25 +174,36 @@ export function ScrollCredits({
   const [contentHeight, setContentHeight] = React.useState(0)
   const [containerHeight, setContainerHeight] = React.useState(0)
   const [internalProgress, setInternalProgress] = React.useState(0)
-  const [markerTops, setMarkerTops] = React.useState<Record<string, number>>({})
+  // Measured box of every item (full layout), for overlay triggers and export windowing.
+  const [boxes, setBoxes] = React.useState<Record<string, Box>>({})
 
   // Use manual progress if provided, otherwise use internal
   const progress = manualProgress !== null ? manualProgress : internalProgress
+
+  // While exporting, render only the items near the stage. Geometry comes from
+  // the last full measurement, which stays frozen so the spacer can't alter it.
+  const windowed = virtualize && manualProgress !== null && items.every((it) => it.id in boxes)
+  const frozenRef = React.useRef(false)
+  React.useLayoutEffect(() => {
+    frozenRef.current = windowed
+  }, [windowed])
 
   // Measure content height after render
   React.useEffect(() => {
     if (!contentRef.current || !containerRef.current) return
     const measure = () => {
+      if (frozenRef.current) return
       if (contentRef.current && containerRef.current) {
         const ch = contentRef.current.scrollHeight
         const cont = containerRef.current.clientHeight
         setContentHeight(ch)
         setContainerHeight(cont)
-        const tops: Record<string, number> = {}
+        const next: Record<string, Box> = {}
         for (const it of items) {
-          if (it.type === "overlay") tops[it.id] = itemEls.current.get(it.id)?.offsetTop ?? 0
+          const el = itemEls.current.get(it.id)
+          next[it.id] = { top: el?.offsetTop ?? 0, height: el?.offsetHeight ?? 0 }
         }
-        setMarkerTops((prev) => (JSON.stringify(prev) === JSON.stringify(tops) ? prev : tops))
+        setBoxes((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
         if (onLayoutChange) {
           // Only items with a real box: excludes the src-less image (height 0),
           // which could otherwise be flagged "active" for an instant in the gap.
@@ -293,15 +315,21 @@ export function ScrollCredits({
   // Background style
   const backgroundStyle = resolveBackgroundStyle(config)
 
+  // Half a stage of margin keeps shadows and blur that bleed past an item's box.
+  const range = windowed
+    ? visibleRange(items.map((it) => boxes[it.id]), translateY, containerHeight, containerHeight / 2)
+    : null
+  const renderedItems = !windowed ? items : range ? items.slice(range.first, range.last + 1) : []
+
   // Overlay images. Paint order: background > back overlays > credits >
   // vignette (z-10) > front overlays (z-20).
   const scrollSec = getScrollDurationSec(contentHeight, containerHeight, config.scrollSpeed)
   const renderOverlays = (layer: OverlayLayer) =>
     items.map((item) => {
-      if (item.type !== "overlay" || !item.imageSrc || !(item.id in markerTops)) return null
+      if (item.type !== "overlay" || !item.imageSrc || !(item.id in boxes)) return null
       const o = resolveOverlay(item)
       if (o.layer !== layer) return null
-      const start = overlayStartSec(markerTops[item.id], contentHeight, containerHeight, config.scrollDirection, scrollSec)
+      const start = overlayStartSec(boxes[item.id].top, contentHeight, containerHeight, config.scrollDirection, scrollSec)
       const opacity = overlayOpacityAt(progress * scrollSec, start, o.duration, o.fade)
       // Not rendered while hidden: keeps invisible images out of each export frame.
       if (opacity <= 0) return null
@@ -365,7 +393,13 @@ export function ScrollCredits({
           willChange: "transform",
         }}
       >
-        {items.map((item) => (
+        {range && range.first > 0 && (
+          <div
+            style={{ height: `${leadingSpacerHeight(boxes[items[range.first].id].top, marginTopOf(items[range.first], config))}px` }}
+            aria-hidden
+          />
+        )}
+        {renderedItems.map((item) => (
           <CreditLine
             key={item.id}
             item={item}
