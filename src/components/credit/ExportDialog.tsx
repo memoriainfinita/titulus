@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
+import { RadioGroup } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -71,6 +72,33 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+}
+
+// Whole card is the radio button (no separate radio dot to aim at).
+function OptionButton({
+  value,
+  id,
+  title,
+  hint,
+  disabled,
+}: {
+  value: string
+  id: string
+  title: string
+  hint?: string
+  disabled?: boolean
+}) {
+  return (
+    <RadioGroupPrimitive.Item
+      value={value}
+      id={id}
+      disabled={disabled}
+      className="border rounded-md p-2.5 text-left transition-colors cursor-pointer hover:bg-accent/40 data-[state=checked]:border-primary data-[state=checked]:bg-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+    >
+      <div className="text-sm font-medium">{title}</div>
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+    </RadioGroupPrimitive.Item>
+  )
 }
 
 function PhaseIcon({ phase }: { phase: ExportProgress["phase"] }) {
@@ -176,6 +204,14 @@ export function ExportDialog({
       : engine !== "ffmpeg" && webcodecsAvailable
       ? "webcodecs"
       : "ffmpeg"
+
+  // Real encoder settings behind each quality level (see useVideoExport / WEBCODECS_QUALITY).
+  const qualityHint: Record<"fast" | "balanced" | "high", string> =
+    format === "webm"
+      ? { fast: "No aplica (1 Mbps fijo)", balanced: "No aplica (1 Mbps fijo)", high: "No aplica (1 Mbps fijo)" }
+      : effectiveEngine === "ffmpeg"
+      ? { fast: "CRF 28 · ultrafast", balanced: "CRF 23 · veryfast", high: "CRF 18 · medium" }
+      : { fast: "Bitrate medium", balanced: "Bitrate high", high: "Bitrate very-high" }
 
   // Per-phase ETA: capturing is linear in frames; encoding maps to the 0.6-0.95
   // slice of the overall bar reported by ffmpeg. Reading the ref and the clock
@@ -303,7 +339,7 @@ export function ExportDialog({
             Exportar video
           </DialogTitle>
           <DialogDescription>
-            Genera un archivo de video con tus créditos. El proceso captura frame a frame y los codifica con H.264.
+            Genera un archivo de vídeo con tus créditos.
           </DialogDescription>
         </DialogHeader>
 
@@ -340,51 +376,39 @@ export function ExportDialog({
                   onValueChange={(v) => setEngine(v as "webcodecs" | "ffmpeg" | "strip")}
                   className="grid grid-cols-3 gap-2"
                 >
-                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <RadioGroupItem value="webcodecs" id="eng-webcodecs" disabled={!webcodecsAvailable} />
-                    <div>
-                      <Label htmlFor="eng-webcodecs" className="cursor-pointer font-medium text-sm">
-                        Rápido
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {webcodecsSupported === null
-                          ? "Comprobando..."
-                          : !webcodecsSupported
-                          ? "No disponible en este navegador"
-                          : format !== "mp4"
-                          ? "Solo MP4"
-                          : "WebCodecs, solo MP4"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <RadioGroupItem value="ffmpeg" id="eng-ffmpeg" />
-                    <div>
-                      <Label htmlFor="eng-ffmpeg" className="cursor-pointer font-medium text-sm">
-                        Compatible
-                      </Label>
-                      <p className="text-xs text-muted-foreground">FFmpeg, MP4 o WebM</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <RadioGroupItem value="strip" id="eng-strip" disabled={!stripAvailable} />
-                    <div>
-                      <Label htmlFor="eng-strip" className="cursor-pointer font-medium text-sm">
-                        Experimental
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {webcodecsSupported === null
-                          ? "Comprobando..."
-                          : config.mode !== "scroll"
-                          ? "Solo modo scroll"
-                          : format !== "mp4"
-                          ? "Solo MP4"
-                          : !webcodecsSupported
-                          ? "No disponible en este navegador"
-                          : "Captura única, solo scroll"}
-                      </p>
-                    </div>
-                  </div>
+                  <OptionButton
+                    value="webcodecs"
+                    id="eng-webcodecs"
+                    disabled={!webcodecsAvailable}
+                    title="WebCodecs"
+                    hint={
+                      webcodecsSupported === null
+                        ? "Comprobando..."
+                        : !webcodecsSupported
+                        ? "No disponible en este navegador"
+                        : format !== "mp4"
+                        ? "Solo MP4"
+                        : "Captura el escenario en cada frame · H.264 (hardware si hay) · MP4"
+                    }
+                  />
+                  <OptionButton value="ffmpeg" id="eng-ffmpeg" title="FFmpeg" hint="Captura un PNG por frame · codifica por software (descarga ~30 MB) · MP4 o WebM" />
+                  <OptionButton
+                    value="strip"
+                    id="eng-strip"
+                    disabled={!stripAvailable}
+                    title="Captura única"
+                    hint={
+                      webcodecsSupported === null
+                        ? "Comprobando..."
+                        : config.mode !== "scroll"
+                        ? "Solo modo scroll"
+                        : format !== "mp4"
+                        ? "Solo MP4"
+                        : !webcodecsSupported
+                        ? "No disponible en este navegador"
+                        : "Captura el scroll una vez y lo desplaza · H.264 (hardware si hay) · solo scroll y MP4"
+                    }
+                  />
                 </RadioGroup>
               </div>
 
@@ -395,24 +419,8 @@ export function ExportDialog({
                   onValueChange={(v) => setFormat(v as "mp4" | "webm")}
                   className="grid grid-cols-2 gap-2"
                 >
-                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <RadioGroupItem value="mp4" id="fmt-mp4" />
-                    <div>
-                      <Label htmlFor="fmt-mp4" className="cursor-pointer font-medium text-sm">
-                        MP4 (H.264)
-                      </Label>
-                      <p className="text-xs text-muted-foreground">Compatible y universal</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <RadioGroupItem value="webm" id="fmt-webm" />
-                    <div>
-                      <Label htmlFor="fmt-webm" className="cursor-pointer font-medium text-sm">
-                        WebM (VP9)
-                      </Label>
-                      <p className="text-xs text-muted-foreground">Más rápido, menor compatibilidad</p>
-                    </div>
-                  </div>
+                  <OptionButton value="mp4" id="fmt-mp4" title="MP4 (H.264)" hint="H.264 yuv420p · reproduce en cualquier sitio" />
+                  <OptionButton value="webm" id="fmt-webm" title="WebM (VP9)" hint="VP9 a 1 Mbps fijos · solo motor FFmpeg" />
                 </RadioGroup>
               </div>
 
@@ -424,12 +432,7 @@ export function ExportDialog({
                   className="grid grid-cols-3 gap-2"
                 >
                   {[24, 30, 60].map((f) => (
-                    <div key={f} className="flex items-center space-x-2 border rounded-md p-2 cursor-pointer hover:bg-accent/40">
-                      <RadioGroupItem value={String(f)} id={`fps-${f}`} />
-                      <Label htmlFor={`fps-${f}`} className="cursor-pointer text-sm font-medium">
-                        {f} fps
-                      </Label>
-                    </div>
+                    <OptionButton key={f} value={String(f)} id={`fps-${f}`} title={`${f} fps`} hint={`${Math.max(1, Math.ceil(duration * f)).toLocaleString()} frames`} />
                   ))}
                 </RadioGroup>
               </div>
@@ -442,17 +445,13 @@ export function ExportDialog({
                   className="grid grid-cols-4 gap-2"
                 >
                   {SCALE_PRESETS.map((s) => (
-                    <div key={s} className="flex flex-col space-y-0.5 border rounded-md p-2 cursor-pointer hover:bg-accent/40">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value={String(s)} id={`scale-${s}`} />
-                        <Label htmlFor={`scale-${s}`} className="cursor-pointer text-sm font-medium">
-                          ×{s}
-                        </Label>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground ml-6 leading-tight">
-                        {evenDim(config.stageWidth * s)}×{evenDim(config.stageHeight * s)}
-                      </span>
-                    </div>
+                    <OptionButton
+                      key={s}
+                      value={String(s)}
+                      id={`scale-${s}`}
+                      title={`×${s}`}
+                      hint={`${evenDim(config.stageWidth * s)}×${evenDim(config.stageHeight * s)}`}
+                    />
                   ))}
                 </RadioGroup>
                 {scale > 1 && (
@@ -469,33 +468,9 @@ export function ExportDialog({
                   onValueChange={(v) => setQuality(v as "fast" | "balanced" | "high")}
                   className="grid grid-cols-3 gap-2"
                 >
-                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="fast" id="q-fast" />
-                      <Label htmlFor="q-fast" className="cursor-pointer text-sm font-medium">
-                        Rápida
-                      </Label>
-                    </div>
-                    <span className="text-xs text-muted-foreground ml-6">Archivo más grande</span>
-                  </div>
-                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="balanced" id="q-balanced" />
-                      <Label htmlFor="q-balanced" className="cursor-pointer text-sm font-medium">
-                        Balanceada
-                      </Label>
-                    </div>
-                    <span className="text-xs text-muted-foreground ml-6">Recomendada</span>
-                  </div>
-                  <div className="flex flex-col space-y-1 border rounded-md p-2.5 cursor-pointer hover:bg-accent/40">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="high" id="q-high" />
-                      <Label htmlFor="q-high" className="cursor-pointer text-sm font-medium">
-                        Alta
-                      </Label>
-                    </div>
-                    <span className="text-xs text-muted-foreground ml-6">Más lento, mejor calidad</span>
-                  </div>
+                  <OptionButton value="fast" id="q-fast" title="Rápida" hint={qualityHint.fast} />
+                  <OptionButton value="balanced" id="q-balanced" title="Balanceada" hint={qualityHint.balanced} />
+                  <OptionButton value="high" id="q-high" title="Alta" hint={qualityHint.high} />
                 </RadioGroup>
               </div>
 
