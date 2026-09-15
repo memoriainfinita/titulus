@@ -8,6 +8,7 @@ import { CreditConfig, CreditItem, CreditMode } from "@/lib/credit/types"
 import { createFrameFontEmbedder } from "@/lib/credit/fontEmbed"
 import { exportWithWebCodecs } from "@/lib/credit/webcodecsExport"
 import { exportScrollStrip } from "@/lib/credit/stripExport"
+import { ExportRange, frameProgress, frameWindow } from "@/lib/credit/exportSettings"
 
 export interface ExportOptions {
   // "webcodecs": toCanvas + hardware H.264 (MP4 only). "ffmpeg": PNG frames + FFmpeg-wasm.
@@ -23,6 +24,8 @@ export interface ExportOptions {
   quality: "fast" | "balanced" | "high"
   // Estimated duration in seconds
   duration: number
+  // Only this part of the timeline (in/out points); null = the whole piece.
+  range: ExportRange | null
 }
 
 export interface ExportProgress {
@@ -115,6 +118,7 @@ export function useVideoExport() {
                   fps: options.fps,
                   quality: options.quality,
                   duration: options.duration,
+                  range: options.range,
                   setManualProgress,
                   onProgress,
                   isCancelled,
@@ -127,6 +131,7 @@ export function useVideoExport() {
                   fps: options.fps,
                   quality: options.quality,
                   duration: options.duration,
+                  range: options.range,
                   backgroundColor: config.useGradient ? undefined : config.backgroundColor,
                   setManualProgress,
                   isCancelled,
@@ -150,7 +155,8 @@ export function useVideoExport() {
         })
         const ffmpeg = await loadFfmpeg()
 
-        const totalFrames = Math.max(1, Math.ceil(options.duration * options.fps))
+        const frames = frameWindow(options.duration, options.fps, options.range)
+        const totalFrames = frames.count
         const { crf, preset } = QUALITY_PRESETS[options.quality]
 
         // 2. Capture frames one by one
@@ -194,7 +200,7 @@ export function useVideoExport() {
             return null
           }
 
-          const p = i / (totalFrames - 1 || 1)
+          const p = frameProgress(i, frames)
           setManualProgress(p)
 
           // Wait for React to paint (two RAFs ensure layout is committed)

@@ -7,7 +7,10 @@ import {
   ExportQuality,
   WEBCODECS_QUALITY,
   evenDimension,
+  ExportRange,
+  frameProgress,
   frameTiming,
+  frameWindow,
   renderingProgress,
 } from "@/lib/credit/exportSettings"
 
@@ -19,6 +22,8 @@ export interface WebCodecsExportParams {
   fps: number
   quality: ExportQuality
   duration: number
+  // Only this part of the timeline; null = the whole piece.
+  range: ExportRange | null
   backgroundColor: string | undefined
   setManualProgress: (p: number) => void
   onProgress: (phase: "rendering" | "finalizing", framesDone: number, totalFrames: number, overall: number) => void
@@ -43,7 +48,8 @@ export async function canExportWithWebCodecs(width: number, height: number, qual
 // Per frame: deterministic render -> toCanvas -> staging canvas -> hardware H.264.
 // Returns null when cancelled.
 export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blob | null> {
-  const totalFrames = Math.max(1, Math.ceil(p.duration * p.fps))
+  const frames = frameWindow(p.duration, p.fps, p.range)
+  const totalFrames = frames.count
   const outWidth = evenDimension(p.width * p.pixelRatio)
   const outHeight = evenDimension(p.height * p.pixelRatio)
 
@@ -87,7 +93,7 @@ export async function exportWithWebCodecs(p: WebCodecsExportParams): Promise<Blo
         return null
       }
 
-      p.setManualProgress(i / (totalFrames - 1 || 1))
+      p.setManualProgress(frameProgress(i, frames))
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
       await new Promise((r) => setTimeout(r, 16))
       if (i === 0) await fonts.prepare()

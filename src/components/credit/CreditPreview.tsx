@@ -16,6 +16,7 @@ import {
   SquareDashed,
   SkipBack,
   SkipForward,
+  X,
 } from "lucide-react"
 
 // Broadcast-style guide margins, as a fraction of the stage inset on each edge.
@@ -50,6 +51,7 @@ import { scrollProgressForItem, activeItemIndexAtProgress, getScrollDurationSec 
 import { resolveOverlay } from "@/lib/credit/overlay"
 import { itemProgressBounds } from "@/lib/credit/timeline"
 import { isInteractiveTarget } from "@/lib/credit/keyboard"
+import { normalizeRange } from "@/lib/credit/exportSettings"
 import { ExportDialog } from "./ExportDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -72,6 +74,20 @@ export function CreditPreview() {
   // Timeline state
   const progressRef = React.useRef(0)
   const [manualSeek, setManualSeek] = React.useState<number | null>(null)
+  // In/out points for exporting only part of the piece (timeline fractions, not saved).
+  const [inPoint, setInPoint] = React.useState<number | null>(null)
+  const [outPoint, setOutPoint] = React.useState<number | null>(null)
+  const exportRange = normalizeRange(inPoint, outPoint)
+  const markIn = () => {
+    const p = manualSeek ?? progressRef.current
+    if (outPoint !== null && p >= outPoint) return void toast.error("La entrada tiene que quedar antes de la salida")
+    setInPoint(p)
+  }
+  const markOut = () => {
+    const p = manualSeek ?? progressRef.current
+    if (inPoint !== null && p <= inPoint) return void toast.error("La salida tiene que quedar después de la entrada")
+    setOutPoint(p)
+  }
   const [currentItemIndex, setCurrentItemIndex] = React.useState(0)
 
   // Scroll geometry reported by the visible ScrollCredits (for seek + active item).
@@ -364,6 +380,7 @@ export function CreditPreview() {
           onSeekStart={() => { setPlaying(false); setManualSeek(progressRef.current) }}
           onSeek={(v) => setManualSeek(v)}
           ticks={config.mode === "appearing" ? navBounds.map((b) => b.start) : undefined}
+          range={exportRange}
         />
         {config.mode === "appearing" && (
           <>
@@ -376,6 +393,20 @@ export function CreditPreview() {
               {navCount > 0 ? `${Math.min(currentItemIndex, navCount - 1) + 1} / ${navCount}` : "0 / 0"}
             </span>
           </>
+        )}
+        <Button size="sm" variant={inPoint !== null ? "secondary" : "ghost"} className="h-7 px-2 text-xs shrink-0"
+          onClick={markIn} title="Marcar la entrada del tramo a exportar en la posición actual">
+          Entrada
+        </Button>
+        <Button size="sm" variant={outPoint !== null ? "secondary" : "ghost"} className="h-7 px-2 text-xs shrink-0"
+          onClick={markOut} title="Marcar la salida del tramo a exportar en la posición actual">
+          Salida
+        </Button>
+        {(inPoint !== null || outPoint !== null) && (
+          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+            onClick={() => { setInPoint(null); setOutPoint(null) }} title="Quitar el tramo">
+            <X className="h-4 w-4" />
+          </Button>
         )}
       </div>
 
@@ -480,6 +511,7 @@ export function CreditPreview() {
         stageRef={exportStageRef}
         setManualProgress={setExportProgress}
         duration={measuredDuration}
+        range={exportRange}
       />
     </div>
   )

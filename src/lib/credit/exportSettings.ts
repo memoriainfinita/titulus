@@ -24,3 +24,33 @@ export function renderingProgress(framesDone: number, totalFrames: number): numb
   if (totalFrames <= 0) return 0
   return Math.min(1, framesDone / totalFrames) * 0.95
 }
+
+// Part of the piece to export, as fractions (0-1) of the whole timeline.
+export interface ExportRange { start: number; end: number }
+
+// In/out points as marked on the timeline (null = not set). An unset in point
+// starts at 0 and an unset out point ends at 1; an empty range means no range.
+export function normalizeRange(inPoint: number | null, outPoint: number | null): ExportRange | null {
+  if (inPoint === null && outPoint === null) return null
+  const start = Math.min(1, Math.max(0, inPoint ?? 0))
+  const end = Math.min(1, Math.max(0, outPoint ?? 1))
+  return start < end ? { start, end } : null
+}
+
+// Frames to render: a window over the full export's frame grid, so a range
+// yields exactly the frames the full export has between the in and out points.
+export interface FrameWindow { first: number; count: number; total: number }
+
+export function frameWindow(duration: number, fps: number, range: ExportRange | null): FrameWindow {
+  const total = Math.max(1, Math.ceil(duration * fps))
+  if (!range) return { first: 0, count: total, total }
+  const last = total - 1
+  const first = Math.min(last, Math.max(0, Math.ceil(range.start * last - 1e-9)))
+  const end = Math.min(last, Math.max(first, Math.floor(range.end * last + 1e-9)))
+  return { first, count: end - first + 1, total }
+}
+
+// Timeline progress (0-1) of the i-th rendered frame.
+export function frameProgress(i: number, w: FrameWindow): number {
+  return (w.first + i) / (w.total - 1 || 1)
+}

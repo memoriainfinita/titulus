@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import type { ExportRange } from "@/lib/credit/exportSettings"
 
 interface TimelineBarProps {
   progressRef: React.MutableRefObject<number>
@@ -10,12 +11,14 @@ interface TimelineBarProps {
   onSeek: (v: number) => void
   // Optional item-boundary marks (fractions 0-1) drawn over the track.
   ticks?: number[]
+  // Marked in/out range (fractions 0-1), drawn as a band over the track.
+  range?: ExportRange | null
 }
 
 // Progress bar under the stage. When no seek is active it follows progressRef via
 // its own RAF (no parent re-render). When a seek is active (scrubbing OR frozen
 // after release) it shows the controlled seek value — so the thumb never jumps back.
-export function TimelineBar({ progressRef, seekValue, onSeekStart, onSeek, ticks }: TimelineBarProps) {
+export function TimelineBar({ progressRef, seekValue, onSeekStart, onSeek, ticks, range }: TimelineBarProps) {
   const seekActive = seekValue !== null
   const [display, setDisplay] = React.useState(0)
   React.useEffect(() => {
@@ -32,6 +35,12 @@ export function TimelineBar({ progressRef, seekValue, onSeekStart, onSeek, ticks
   const value = seekActive ? (seekValue as number) : display
   return (
     <div className="relative w-full">
+      {range && (
+        <div
+          className="absolute inset-y-0 rounded-sm bg-amber-500/25 border-x-2 border-amber-500 pointer-events-none"
+          style={{ left: `${range.start * 100}%`, width: `${(range.end - range.start) * 100}%` }}
+        />
+      )}
       {ticks && ticks.length > 0 && (
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none">
           {ticks.map((t, i) => (
