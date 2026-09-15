@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import { RadioGroup } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
@@ -29,6 +30,7 @@ import { useShallow } from "zustand/react/shallow"
 import { useVideoExport, ExportProgress } from "@/lib/credit/useVideoExport"
 import { formatElapsed, estimateRemainingSeconds } from "@/lib/credit/exportTiming"
 import { canExportWithWebCodecs } from "@/lib/credit/webcodecsExport"
+import { ExportRange, frameWindow } from "@/lib/credit/exportSettings"
 import { toast } from "sonner"
 
 // File System Access API — not yet in the TS DOM lib in all setups.
@@ -57,6 +59,8 @@ interface ExportDialogProps {
   setManualProgress: (p: number | null) => void
   // Measured duration in seconds
   duration: number
+  // In/out range marked on the timeline; null = none marked
+  range: ExportRange | null
 }
 
 function formatDuration(seconds: number): string {
@@ -124,6 +128,7 @@ export function ExportDialog({
   stageRef,
   setManualProgress,
   duration,
+  range,
 }: ExportDialogProps) {
   const { items, config, projectName } = useCreditStore(
     useShallow((s) => ({ items: s.items, config: s.config, projectName: s.projectName })),
@@ -133,6 +138,7 @@ export function ExportDialog({
   const [scale, setScale] = React.useState(1)
   const [quality, setQuality] = React.useState<"fast" | "balanced" | "high">("balanced")
   const [format, setFormat] = React.useState<"mp4" | "webm">("mp4")
+  const [onlyRange, setOnlyRange] = React.useState(true)
   const [engine, setEngine] = React.useState<"webcodecs" | "ffmpeg" | "strip">("webcodecs")
   // null while the encoder support check is pending
   const [webcodecsSupported, setWebcodecsSupported] = React.useState<boolean | null>(null)
@@ -177,7 +183,9 @@ export function ExportDialog({
     phaseStartRef.current = performance.now()
   }, [progress.phase])
 
-  const totalFrames = Math.max(1, Math.ceil(duration * fps))
+  const effectiveRange = range && onlyRange ? range : null
+  const totalFrames = frameWindow(duration, fps, effectiveRange).count
+  const exportDuration = effectiveRange ? totalFrames / fps : duration
   const evenDim = (n: number) => Math.round(n / 2) * 2
   const outWidth = evenDim(config.stageWidth * scale)
   const outHeight = evenDim(config.stageHeight * scale)
@@ -279,6 +287,7 @@ export function ExportDialog({
           format,
           quality,
           duration,
+          range: effectiveRange,
         },
         setManualProgress,
       )
@@ -350,7 +359,7 @@ export function ExportDialog({
               <div className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
                 <Clock className="h-3 w-3" /> Duración
               </div>
-              <div className="font-medium">{formatDuration(duration)}</div>
+              <div className="font-medium">{formatDuration(exportDuration)}</div>
             </div>
             <div className="bg-muted/40 rounded-md p-2.5">
               <div className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
@@ -369,6 +378,14 @@ export function ExportDialog({
           {/* Settings */}
           {!isExporting && progress.phase !== "done" && progress.phase !== "error" && (
             <>
+              {range && (
+                <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+                  <Label htmlFor="only-range" className="text-sm font-normal cursor-pointer">
+                    Solo el tramo marcado ({formatElapsed(range.start * duration * 1000)} – {formatElapsed(range.end * duration * 1000)})
+                  </Label>
+                  <Switch id="only-range" checked={onlyRange} onCheckedChange={setOnlyRange} />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Motor</Label>
                 <RadioGroup
@@ -432,7 +449,7 @@ export function ExportDialog({
                   className="grid grid-cols-3 gap-2"
                 >
                   {[24, 30, 60].map((f) => (
-                    <OptionButton key={f} value={String(f)} id={`fps-${f}`} title={`${f} fps`} hint={`${Math.max(1, Math.ceil(duration * f)).toLocaleString()} frames`} />
+                    <OptionButton key={f} value={String(f)} id={`fps-${f}`} title={`${f} fps`} hint={`${frameWindow(duration, f, effectiveRange).count.toLocaleString()} frames`} />
                   ))}
                 </RadioGroup>
               </div>

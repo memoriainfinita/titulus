@@ -12,7 +12,10 @@ import {
   ExportQuality,
   WEBCODECS_QUALITY,
   evenDimension,
+  ExportRange,
+  frameProgress,
   frameTiming,
+  frameWindow,
   renderingProgress,
 } from "@/lib/credit/exportSettings"
 import { getScrollDurationSec, getScrollTranslateY } from "@/lib/credit/scroll"
@@ -32,6 +35,8 @@ export interface StripExportParams {
   fps: number
   quality: ExportQuality
   duration: number
+  // Only this part of the timeline; null = the whole piece.
+  range: ExportRange | null
   // Set to null so the export stage renders the full, non-windowed content.
   setManualProgress: (p: number | null) => void
   onProgress: (phase: "rendering" | "finalizing", framesDone: number, totalFrames: number, overall: number) => void
@@ -53,7 +58,8 @@ export async function exportScrollStrip(p: StripExportParams): Promise<Blob | nu
   const pr = p.pixelRatio
   const outW = evenDimension(W * pr)
   const outH = evenDimension(H * pr)
-  const totalFrames = Math.max(1, Math.ceil(p.duration * p.fps))
+  const frames = frameWindow(p.duration, p.fps, p.range)
+  const totalFrames = frames.count
 
   const contentH = el.scrollHeight
   const contentW = el.offsetWidth
@@ -131,7 +137,7 @@ export async function exportScrollStrip(p: StripExportParams): Promise<Blob | nu
         await output.cancel()
         return null
       }
-      const progress = i / (totalFrames - 1 || 1)
+      const progress = frameProgress(i, frames)
       const tSec = progress * scrollSec
       // Content top on stage, rounded to an output pixel.
       const yDev = Math.round(getScrollTranslateY(contentH, H, config.scrollDirection, progress) * pr)
