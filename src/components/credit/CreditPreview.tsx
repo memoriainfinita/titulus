@@ -61,6 +61,7 @@ export function CreditPreview() {
   )
 
   const stageRef = React.useRef<HTMLDivElement>(null)
+  const stageAreaRef = React.useRef<HTMLDivElement>(null)
   const exportStageRef = React.useRef<HTMLDivElement>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [scale, setScale] = React.useState(1)
@@ -170,7 +171,7 @@ export function CreditPreview() {
   // Calculate scale to fit stage inside container
   React.useEffect(() => {
     const updateScale = () => {
-      const container = stageRef.current?.parentElement
+      const container = stageAreaRef.current
       if (!container) return
       // Use the container's content box (excluding padding) for accurate fitting
       const cs = getComputedStyle(container)
@@ -179,21 +180,22 @@ export function CreditPreview() {
       if (cw <= 0 || ch <= 0) return
       const scaleX = cw / config.stageWidth
       const scaleY = ch / config.stageHeight
-      const s = Math.min(scaleX, scaleY, 1)
+      // In fullscreen the stage grows to fit the screen; in the editor it never upscales.
+      const s = Math.min(scaleX, scaleY, document.fullscreenElement ? Infinity : 1)
       setScale(s)
     }
     updateScale()
     // Use ResizeObserver for more reliable container size tracking
     const ro = new ResizeObserver(updateScale)
-    if (stageRef.current?.parentElement) {
-      ro.observe(stageRef.current.parentElement)
+    if (stageAreaRef.current) {
+      ro.observe(stageAreaRef.current)
     }
     window.addEventListener("resize", updateScale)
     return () => {
       window.removeEventListener("resize", updateScale)
       ro.disconnect()
     }
-  }, [config.stageWidth, config.stageHeight])
+  }, [config.stageWidth, config.stageHeight, isFullscreen])
 
   // Auto-start playing on mount
   React.useEffect(() => {
@@ -226,7 +228,9 @@ export function CreditPreview() {
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
       try {
-        await stageRef.current?.requestFullscreen()
+        // Fullscreen goes on the stage's container: the browser forces the fullscreen
+        // element to the screen size, which would re-lay the stage out at the screen's ratio.
+        await stageAreaRef.current?.requestFullscreen()
         setFullscreen(true)
       } catch {
         toast.error("No se pudo activar pantalla completa")
@@ -302,14 +306,17 @@ export function CreditPreview() {
       </div>
 
       {/* Stage area */}
-      <div className="flex-1 flex items-center justify-center bg-muted/30 p-4 overflow-hidden">
+      <div
+        ref={stageAreaRef}
+        className={`flex-1 flex items-center justify-center overflow-hidden ${isFullscreen ? "bg-black" : "bg-muted/30 p-4"}`}
+      >
         <div
           ref={stageRef}
           className="relative shadow-2xl"
           style={{
             width: `${config.stageWidth}px`,
             height: `${config.stageHeight}px`,
-            transform: `scale(${isFullscreen ? 1 : scale})`,
+            transform: `scale(${scale})`,
             transformOrigin: "center center",
             // Prevent flexbox from shrinking the stage below its declared size.
             // The visual scaling is handled by transform, the logical size must remain
