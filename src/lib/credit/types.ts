@@ -182,7 +182,7 @@ export interface CreditConfig {
   // Stage
   stageWidth: number // 16, 21, 9, etc.
   stageHeight: number
-  stageRatio: "16:9" | "21:9" | "4:3" | "9:16" | "1:1"
+  stageRatio: "16:9" | "21:9" | "4:3" | "9:16" | "1:1" | "custom" // custom: width/height set by hand
   // Preview guides (never exported into the video)
   showSafeMargins: boolean // title-safe / action-safe overlay in the editor preview
   respectSafeMargins: boolean // constriñe el contenido a la caja título-segura; SÍ afecta al export

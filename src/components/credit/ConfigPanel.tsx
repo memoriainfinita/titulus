@@ -26,6 +26,7 @@ import { useShallow } from "zustand/react/shallow"
 import { CreditConfig, AnimationType, CreditMode, Alignment, DividerStyle, BackgroundImageFit, CREDIT_TYPE_LABELS } from "@/lib/credit/types"
 import { DEFAULT_CONFIG } from "@/lib/credit/types"
 import { downscaleImageFile } from "@/lib/credit/downscaleImage"
+import { aspectRatioLabel, clampStageDimension, MAX_STAGE_DIMENSION, MIN_STAGE_DIMENSION } from "@/lib/credit/stage"
 import { toast } from "sonner"
 import { FontManager } from "./FontManager"
 import { ItemInspector } from "./ItemInspector"
@@ -212,7 +213,34 @@ function ColorInput({ value, onChange }: { value: string; onChange: (v: string) 
   )
 }
 
-const STAGE_RATIOS: { label: string; value: CreditConfig["stageRatio"]; w: number; h: number }[] = [
+// Draft while typing; the value is applied on blur or Enter so intermediate digits don't resize the stage.
+function StageDimensionInput({ label, value, onCommit }: { label: string; value: number; onCommit: (n: number) => void }) {
+  const [draft, setDraft] = React.useState(String(value))
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- keep the draft in sync with outside changes (preset, import)
+  React.useEffect(() => { setDraft(String(value)) }, [value])
+  const commit = () => {
+    const n = clampStageDimension(draft.trim() === "" ? NaN : Number(draft), value)
+    setDraft(String(n))
+    if (n !== value) onCommit(n)
+  }
+  return (
+    <Input
+      type="number"
+      aria-label={label}
+      title={label}
+      min={MIN_STAGE_DIMENSION}
+      max={MAX_STAGE_DIMENSION}
+      step={2}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") commit() }}
+      className="h-8 text-xs font-mono"
+    />
+  )
+}
+
+const STAGE_RATIOS:{ label: string; value: CreditConfig["stageRatio"]; w: number; h: number }[] = [
   { label: "16:9 (Cine/Wide)", value: "16:9", w: 1280, h: 720 },
   { label: "21:9 (Ultra-wide)", value: "21:9", w: 1280, h: 549 },
   { label: "4:3 (Clásico)", value: "4:3", w: 1280, h: 960 },
@@ -317,6 +345,7 @@ function GlobalConfig() {
               <Select
                 value={config.stageRatio}
                 onValueChange={(v) => {
+                  if (v === "custom") return updateConfig({ stageRatio: "custom" })
                   const ratio = STAGE_RATIOS.find((r) => r.value === v)
                   if (ratio) updateConfig({ stageRatio: v as CreditConfig["stageRatio"], stageWidth: ratio.w, stageHeight: ratio.h })
                 }}
@@ -330,9 +359,31 @@ function GlobalConfig() {
                       {r.label}
                     </SelectItem>
                   ))}
+                  <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
+            {config.stageRatio === "custom" && (
+              <Field label="Tamaño (px)" hint={`Proporción ${aspectRatioLabel(config.stageWidth, config.stageHeight)}`}>
+                <div className="flex items-center gap-2">
+                  <StageDimensionInput
+                    label="Ancho"
+                    value={config.stageWidth}
+                    onCommit={(n) => updateConfig({ stageWidth: n })}
+                  />
+                  <X className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <StageDimensionInput
+                    label="Alto"
+                    value={config.stageHeight}
+                    onCommit={(n) => updateConfig({ stageHeight: n })}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {MIN_STAGE_DIMENSION}-{MAX_STAGE_DIMENSION} px por lado, redondeado a par. Con un escenario mayor el texto
+                  ocupa menos y la exportación tarda más.
+                </p>
+              </Field>
+            )}
           </Section>
 
           {/* MODE */}
