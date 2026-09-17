@@ -108,7 +108,8 @@ export async function exportScrollStrip(p: StripExportParams): Promise<Blob | nu
       pixelRatio: pr,
       fontEmbedCSS: fontCSS ?? undefined,
       skipFonts: fontCSS !== null,
-      style: { left: "0", right: "auto", top: "0", transform: `translate3d(0, ${-k * CHUNK_HEIGHT}px, 0)` },
+      // Static: html-to-image ignores `left` on the absolute clone, so the safe inset would be captured twice.
+      style: { position: "static", transform: `translate3d(0, ${-k * CHUNK_HEIGHT}px, 0)` },
     })
     chunks.set(k, canvas)
     return canvas
