@@ -1,6 +1,10 @@
-# TITULUS
+# titulus
 
 Generador de títulos de crédito para vídeo. Se edita en vivo con vista previa y se exporta a vídeo desde el propio navegador. Sin servidor: todo el estado vive en el cliente.
+
+**[Abrir la app](https://memoriainfinita.github.io/titulus/)**
+
+![titulus con el proyecto de ejemplo cargado: la lista de créditos a la izquierda, la vista previa en el centro y el inspector a la derecha](docs/titulus-demo.png)
 
 ## Modos
 
@@ -57,3 +61,11 @@ Los builds nativos (sharp, etc.) se autorizan en `pnpm-workspace.yaml` (`allowBu
 ## Conexiones externas
 
 La app no envía datos del usuario a ningún sitio. Contacta con terceros solo para descargar recursos: `unpkg.com` (core de FFmpeg-wasm, solo al exportar con el motor Compatible) y `fonts.googleapis.com` / `fonts.gstatic.com` (Google Fonts, si se usan).
+
+## Licencia
+
+GPL-3.0. Ver `LICENSE`.
+
+## Credits
+
+Desarrollado por [@memoriainfinita](https://github.com/memoriainfinita) con la asistencia de Claude (Anthropic).
