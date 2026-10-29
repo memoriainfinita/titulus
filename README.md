@@ -2,7 +2,7 @@
 
 Generador de títulos de crédito para vídeo. Se edita en vivo con vista previa y se exporta a vídeo desde el propio navegador. Sin servidor: todo el estado vive en el cliente.
 
-**[Abrir la app](https://memoriainfinita.github.io/titulus/)**
+**[Abrir la app](https://memoriainfinita.github.io/titulus/)** · **[Guía de uso](docs/guide/README.md)**
 
 ![titulus con el proyecto de ejemplo cargado: la lista de créditos a la izquierda, la vista previa en el centro y el inspector a la derecha](docs/titulus-demo.png)
 
